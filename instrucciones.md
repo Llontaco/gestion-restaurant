@@ -1,2 +1,2 @@
 subir parte por parte el codigo que les dejare para que la profe vea avances...
-probando jira 2
+probando jira 23
