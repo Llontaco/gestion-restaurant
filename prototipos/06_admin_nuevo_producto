@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QUIOSKO Admin - Nuevo Producto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #f3f4f6; display: flex; min-height: 100vh; }
+
+    /* ─── ADMIN SIDEBAR ─── */
+    aside.admin-sidebar {
+      width: 288px; min-height: 100vh;
+      background: #fff; flex-shrink: 0;
+    }
+    .logo-wrap { display: flex; justify-content: center; padding: 24px 16px; border-bottom: 1px solid #e5e7eb; }
+    .logo-placeholder {
+      width: 120px; height: 120px;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+    }
+    .nav-label {
+      text-align: center; font-size: 12px; font-weight: 700;
+      color: #9ca3af; text-transform: uppercase; letter-spacing: 1px;
+      margin: 32px 0 12px;
+    }
+    nav.admin-nav a {
+      display: block; padding: 14px 20px;
+      text-decoration: none; color: #374151;
+      font-weight: 600; font-size: 16px;
+      border-left: 4px solid transparent;
+    }
+    nav.admin-nav a.active { background: #fef3c7; border-left-color: #f59e0b; color: #92400e; }
+
+    /* ─── MAIN ─── */
+    main.admin-main { flex: 1; background: #f3f4f6; padding: 24px; overflow-y: auto; }
+    .page-heading { font-size: 28px; font-weight: 900; color: #111827; margin-bottom: 28px; }
+
+    /* ─── FORM CARD ─── */
+    .form-card {
+      background: #fff; max-width: 640px;
+      border-radius: 4px; padding: 32px;
+    }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block; color: #1e293b;
+      font-weight: 500; margin-bottom: 8px;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group select {
+      display: block; width: 100%;
+      padding: 12px; background: #f1f5f9;
+      border: none; outline: none;
+      font-size: 15px; color: #111827;
+    }
+    .form-group select { appearance: auto; }
+    .form-group input::placeholder { color: #94a3b8; }
+
+    /* ─── IMAGE UPLOAD ─── */
+    .image-upload-area {
+      border: 2px dashed #d1d5db;
+      border-radius: 8px; padding: 40px;
+      text-align: center; cursor: pointer;
+      background: #f9fafb;
+      margin-bottom: 20px;
+    }
+    .image-upload-area:hover { border-color: #9ca3af; background: #f3f4f6; }
+    .upload-icon { font-size: 40px; margin-bottom: 12px; }
+    .upload-label { font-size: 15px; font-weight: 600; color: #374151; }
+    .upload-hint { font-size: 13px; color: #9ca3af; margin-top: 4px; }
+    .upload-formats { font-size: 12px; color: #9ca3af; margin-top: 8px; }
+
+    /* ─── SUBMIT ─── */
+    .btn-submit {
+      width: 100%; padding: 14px;
+      background: #4f46e5; color: #fff;
+      border: none; font-weight: 700;
+      font-size: 16px; text-transform: uppercase;
+      cursor: pointer; letter-spacing: .5px;
+      border-radius: 2px; margin-top: 8px;
+    }
+    .btn-submit:hover { background: #3730a3; }
+  </style>
+</head>
+<body>
+
+  <!-- ADMIN SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="logo-wrap">
+      <div class="logo-placeholder">🍽️</div>
+    </div>
+    <p class="nav-label">Navegación</p>
+    <nav class="admin-nav">
+      <a href="#">Ordenes</a>
+      <a href="#" class="active">Productos</a>
+      <a href="#">Ver Quiosco</a>
+    </nav>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="admin-main">
+    <h1 class="page-heading">Nuevo Producto</h1>
+
+    <div class="form-card">
+      <form>
+
+        <!-- Nombre -->
+        <div class="form-group">
+          <label for="name">Nombre:</label>
+          <input
+            id="name"
+            type="text"
+            name="name"
+            placeholder="Nombre Producto"
+          />
+        </div>
+
+        <!-- Precio -->
+        <div class="form-group">
+          <label for="price">Precio:</label>
+          <input
+            id="price"
+            type="number"
+            name="price"
+            placeholder="Precio Producto"
+          />
+        </div>
+
+        <!-- Categoría -->
+        <div class="form-group">
+          <label for="categoryId">Categoría:</label>
+          <select id="categoryId" name="categoryId">
+            <option value="">-- Seleccione --</option>
+            <option value="1">Hamburguesa</option>
+            <option value="2">Café</option>
+            <option value="3">Pizza</option>
+            <option value="4">Dona</option>
+            <option value="5">Pastel</option>
+            <option value="6">Galletas</option>
+          </select>
+        </div>
+
+        <!-- Carga de Imagen -->
+        <div class="image-upload-area">
+          <div class="upload-icon">📷</div>
+          <p class="upload-label">Subir imagen del producto</p>
+          <p class="upload-hint">Arrastra y suelta o haz clic para seleccionar</p>
+          <p class="upload-formats">PNG, JPG, WEBP hasta 5MB</p>
+          <input type="file" accept="image/*" style="display:none" />
+        </div>
+
+        <input type="submit" class="btn-submit" value="Guardar Producto" />
+      </form>
+    </div>
+  </main>
+
+</body>
+</html>
