@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QUIOSKO Admin - Administrar Productos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #f3f4f6; display: flex; min-height: 100vh; }
+
+    /* ─── ADMIN SIDEBAR ─── */
+    aside.admin-sidebar {
+      width: 288px; min-height: 100vh;
+      background: #fff; flex-shrink: 0;
+    }
+    .logo-wrap { display: flex; justify-content: center; padding: 24px 16px; border-bottom: 1px solid #e5e7eb; }
+    .logo-placeholder {
+      width: 120px; height: 120px;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 36px;
+    }
+    .nav-label {
+      text-align: center; font-size: 12px; font-weight: 700;
+      color: #9ca3af; text-transform: uppercase; letter-spacing: 1px;
+      margin: 32px 0 12px;
+    }
+    nav.admin-nav a {
+      display: block; padding: 14px 20px;
+      text-decoration: none; color: #374151;
+      font-weight: 600; font-size: 16px;
+      border-left: 4px solid transparent;
+    }
+    nav.admin-nav a.active { background: #fef3c7; border-left-color: #f59e0b; color: #92400e; }
+
+    /* ─── MAIN ─── */
+    main.admin-main { flex: 1; background: #f3f4f6; padding: 24px; overflow-y: auto; }
+    .page-heading { font-size: 28px; font-weight: 900; color: #111827; margin-bottom: 24px; }
+
+    /* ─── TOOLBAR ─── */
+    .toolbar {
+      display: flex; flex-wrap: wrap;
+      justify-content: space-between; align-items: center;
+      gap: 16px; margin-bottom: 32px;
+    }
+    .btn-create {
+      display: inline-block;
+      background: #fbbf24; color: #111827;
+      padding: 12px 36px; font-weight: 700;
+      font-size: 18px; text-decoration: none;
+      cursor: pointer; border: none; white-space: nowrap;
+    }
+    .search-form { display: flex; align-items: center; gap: 0; }
+    .search-form input[type="text"] {
+      padding: 10px 14px; background: #fff;
+      border: 1px solid #d1d5db; font-size: 15px;
+      width: 260px; color: #111827;
+      outline: none; border-right: none;
+    }
+    .search-form input[type="submit"] {
+      background: #4f46e5; color: #fff;
+      border: none; padding: 10px 20px;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; text-transform: uppercase;
+    }
+
+    /* ─── TABLE ─── */
+    .table-wrap { background: #fff; padding: 20px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left; font-size: 13px; font-weight: 600;
+      color: #111827; padding: 12px 12px 12px 4px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    tbody tr { border-bottom: 1px solid #e5e7eb; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td {
+      padding: 16px 12px 16px 4px;
+      font-size: 14px; color: #111827; white-space: nowrap;
+    }
+    tbody td.price { color: #6b7280; }
+    tbody td.category { color: #6b7280; }
+    .link-edit { color: #4f46e5; text-decoration: none; font-weight: 500; }
+    .link-edit:hover { color: #3730a3; text-decoration: underline; }
+
+    /* ─── PAGINACIÓN ─── */
+    .pagination { display: flex; justify-content: center; padding: 36px 0; gap: 0; }
+    .pagination a, .pagination span {
+      display: inline-block; padding: 8px 16px;
+      background: #fff; color: #111827;
+      font-size: 14px; text-decoration: none;
+      box-shadow: 0 0 0 1px #d1d5db inset;
+    }
+    .pagination a.active { font-weight: 900; }
+    .pagination a:hover { background: #f9fafb; }
+  </style>
+</head>
+<body>
+
+  <!-- ADMIN SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="logo-wrap">
+      <div class="logo-placeholder">🍽️</div>
+    </div>
+    <p class="nav-label">Navegación</p>
+    <nav class="admin-nav">
+      <a href="#">Ordenes</a>
+      <a href="#" class="active">Productos</a>
+      <a href="#">Ver Quiosco</a>
+    </nav>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="admin-main">
+    <h1 class="page-heading">Administrar productos</h1>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <a href="#" class="btn-create">Crear Producto</a>
+      <form class="search-form">
+        <input type="text" placeholder="Buscar Producto" name="search" />
+        <input type="submit" value="Buscar" />
+      </form>
+    </div>
+
+    <!-- TABLA DE PRODUCTOS -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Precio</th>
+            <th>Categoría</th>
+            <th><span class="sr-only">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Hamburguesa Clásica</td>
+            <td class="price">$85.00</td>
+            <td class="category">Hamburguesa</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+          <tr>
+            <td>Hamburguesa BBQ</td>
+            <td class="price">$110.00</td>
+            <td class="category">Hamburguesa</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+          <tr>
+            <td>Café Americano</td>
+            <td class="price">$35.00</td>
+            <td class="category">Café</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+          <tr>
+            <td>Café Latte</td>
+            <td class="price">$50.00</td>
+            <td class="category">Café</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+          <tr>
+            <td>Capuccino</td>
+            <td class="price">$55.00</td>
+            <td class="category">Café</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+          <tr>
+            <td>Pizza Margarita</td>
+            <td class="price">$120.00</td>
+            <td class="category">Pizza</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+          <tr>
+            <td>Dona Glaseada</td>
+            <td class="price">$30.00</td>
+            <td class="category">Dona</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+          <tr>
+            <td>Pastel de Chocolate</td>
+            <td class="price">$75.00</td>
+            <td class="category">Pastel</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+          <tr>
+            <td>Galletas de Avena</td>
+            <td class="price">$25.00</td>
+            <td class="category">Galletas</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+          <tr>
+            <td>Doble Queso</td>
+            <td class="price">$125.00</td>
+            <td class="category">Hamburguesa</td>
+            <td><a href="#" class="link-edit">Editar</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINACIÓN -->
+    <nav class="pagination">
+      <a href="#">«</a>
+      <a href="#" class="active">1</a>
+      <a href="#">2</a>
+      <a href="#">3</a>
+      <a href="#">»</a>
+    </nav>
+  </main>
+
+</body>
+</html>
