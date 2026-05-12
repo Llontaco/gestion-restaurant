@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QUIOSKO - Menú de Pedidos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #f3f4f6; display: flex; min-height: 100vh; }
+
+    /* ─── SIDEBAR CATEGORÍAS ─── */
+    aside.categories {
+      width: 288px;
+      min-height: 100vh;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .logo-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .logo-wrap img { width: 120px; height: 120px; object-fit: contain; }
+    .logo-placeholder {
+      width: 120px; height: 120px;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 22px; color: #fff; letter-spacing: 1px;
+    }
+    nav.categories-nav a {
+      display: flex; align-items: center; gap: 16px;
+      padding: 12px 16px;
+      border-top: 1px solid #e5e7eb;
+      text-decoration: none; color: #111827;
+      font-weight: 700; font-size: 18px;
+      transition: background .15s;
+    }
+    nav.categories-nav a:last-child { border-bottom: 1px solid #e5e7eb; }
+    nav.categories-nav a.active { background: #fbbf24; }
+    nav.categories-nav a:hover:not(.active) { background: #fef3c7; }
+    .cat-icon {
+      width: 56px; height: 56px;
+      background: #f3f4f6; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; flex-shrink: 0;
+    }
+
+    /* ─── CONTENIDO PRINCIPAL ─── */
+    main.menu-main {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      min-height: 100vh;
+    }
+    .page-heading {
+      font-size: 28px; font-weight: 900; color: #111827; margin-bottom: 20px;
+    }
+    .products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+    }
+    .product-card {
+      background: #fff; border: 1px solid #e5e7eb;
+      overflow: hidden; border-radius: 4px;
+    }
+    .product-card img, .product-img-placeholder {
+      width: 100%; height: 200px; object-fit: cover;
+      display: block;
+    }
+    .product-img-placeholder {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 56px;
+    }
+    .product-info { padding: 20px; }
+    .product-info h3 { font-size: 20px; font-weight: 700; color: #111827; }
+    .product-price { font-size: 32px; font-weight: 900; color: #f59e0b; margin-top: 12px; }
+    .btn-add {
+      display: block; width: 100%; margin-top: 16px;
+      background: #111827; color: #fff;
+      border: none; padding: 10px;
+      font-weight: 700; font-size: 15px;
+      cursor: pointer; text-align: center;
+      text-transform: uppercase; letter-spacing: .5px;
+      border-radius: 2px;
+    }
+
+    /* ─── SIDEBAR RESUMEN DE PEDIDO ─── */
+    aside.order-summary {
+      width: 320px; min-height: 100vh;
+      background: #fff;
+      border-left: 1px solid #e5e7eb;
+      padding: 20px;
+      display: flex; flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+    aside.order-summary h1 {
+      text-align: center; font-size: 28px; font-weight: 900;
+      color: #111827; margin-bottom: 16px;
+    }
+    .order-empty {
+      text-align: center; color: #6b7280; margin-top: 32px;
+      font-size: 15px;
+    }
+    .order-item {
+      border-top: 1px solid #e5e7eb; padding: 16px 0;
+    }
+    .order-item-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .order-item-header p { font-weight: 700; font-size: 17px; }
+    .btn-remove {
+      background: none; border: none; cursor: pointer;
+      color: #dc2626; font-size: 22px; line-height: 1;
+    }
+    .order-item-price { color: #f59e0b; font-weight: 900; font-size: 20px; margin: 4px 0; }
+    .qty-controls {
+      display: flex; gap: 20px; align-items: center;
+      background: #f3f4f6; padding: 8px 24px;
+      border-radius: 8px; width: fit-content; margin-top: 8px;
+    }
+    .qty-controls button {
+      background: none; border: none; cursor: pointer;
+      font-size: 20px; font-weight: 700; color: #374151;
+    }
+    .qty-controls span { font-size: 16px; font-weight: 900; }
+    .order-subtotal { font-size: 17px; font-weight: 900; color: #374151; margin-top: 8px; }
+    .order-subtotal span { font-weight: 400; }
+    .order-total {
+      font-size: 20px; text-align: center; margin-top: 64px;
+    }
+    .order-total strong { font-weight: 700; }
+    .order-form { margin-top: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .order-form input[type="text"] {
+      border: 1px solid #e5e7eb; padding: 10px;
+      width: 100%; font-size: 15px; background: #fff;
+    }
+    .order-form input[type="submit"] {
+      padding: 10px; background: #111827; color: #fff;
+      border: none; font-weight: 700; font-size: 15px;
+      text-transform: uppercase; cursor: pointer;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR CATEGORÍAS -->
+  <aside class="categories">
+    <div class="logo-wrap">
+      <div class="logo-placeholder">🍽️</div>
+    </div>
+    <nav class="categories-nav">
+      <a href="#" class="active">
+        <div class="cat-icon">🍔</div> Hamburguesa
+      </a>
+      <a href="#">
+        <div class="cat-icon">☕</div> Café
+      </a>
+      <a href="#">
+        <div class="cat-icon">🍕</div> Pizza
+      </a>
+      <a href="#">
+        <div class="cat-icon">🍩</div> Dona
+      </a>
+      <a href="#">
+        <div class="cat-icon">🍰</div> Pastel
+      </a>
+      <a href="#">
+        <div class="cat-icon">🍪</div> Galletas
+      </a>
+    </nav>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="menu-main">
+    <h1 class="page-heading">Elige y personaliza tu pedido a continuación</h1>
+
+    <div class="products-grid">
+
+      <div class="product-card">
+        <div class="product-img-placeholder">🍔</div>
+        <div class="product-info">
+          <h3>Hamburguesa Clásica</h3>
+          <p class="product-price">$85.00</p>
+          <button class="btn-add">Agregar</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-img-placeholder">🥩</div>
+        <div class="product-info">
+          <h3>Hamburguesa BBQ</h3>
+          <p class="product-price">$110.00</p>
+          <button class="btn-add">Agregar</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-img-placeholder">🧀</div>
+        <div class="product-info">
+          <h3>Doble Queso</h3>
+          <p class="product-price">$125.00</p>
+          <button class="btn-add">Agregar</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-img-placeholder">🌶️</div>
+        <div class="product-info">
+          <h3>Hamburguesa Jalapeño</h3>
+          <p class="product-price">$100.00</p>
+          <button class="btn-add">Agregar</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- SIDEBAR RESUMEN DE PEDIDO (con items) -->
+  <aside class="order-summary">
+    <h1>MIS PEDIDOS</h1>
+
+    <div class="order-item">
+      <div class="order-item-header">
+        <p>Hamburguesa Clásica</p>
+        <button class="btn-remove">✕</button>
+      </div>
+      <p class="order-item-price">$85.00</p>
+      <div class="qty-controls">
+        <button>−</button>
+        <span>2</span>
+        <button>+</button>
+      </div>
+      <p class="order-subtotal">Subtotal: <span>$170.00</span></p>
+    </div>
+
+    <div class="order-item">
+      <div class="order-item-header">
+        <p>Hamburguesa BBQ</p>
+        <button class="btn-remove">✕</button>
+      </div>
+      <p class="order-item-price">$110.00</p>
+      <div class="qty-controls">
+        <button>−</button>
+        <span>1</span>
+        <button>+</button>
+      </div>
+      <p class="order-subtotal">Subtotal: <span>$110.00</span></p>
+    </div>
+
+    <p class="order-total">Total a pagar: <strong>$280.00</strong></p>
+
+    <form class="order-form">
+      <input type="text" placeholder="Tu Nombre" />
+      <input type="submit" value="Confirmar Pedido" />
+    </form>
+  </aside>
+
+</body>
+</html>
