@@ -1,95 +1,138 @@
-# QUIOSKO – Vistas React · v1.0.0
+# 🍔 Gestion Restaurant — Backend + Frontend
 
-Aplicación React completamente independiente del proyecto Next.js principal.  
-Funciona con datos de prueba — **no necesita base de datos ni backend**.
-
-> 📋 Consulta el historial de cambios en [CHANGELOG.md](./CHANGELOG.md)
+Sistema de gestión de restaurante con CRUD completo de productos.
 
 ---
 
-## Instalación y ejecución
+## 🏗️ Estructura del proyecto
 
-> **Requisito previo:** Tener [Node.js](https://nodejs.org) instalado (v18 o superior).
+```
+gestion-restaurant/          ← tu proyecto frontend (original)
+├── src/
+│   ├── services/
+│   │   └── api.ts           ← NUEVO: servicio API
+│   ├── pages/
+│   │   ├── AdminProducts.tsx     ← REEMPLAZAR con el patch
+│   │   ├── AdminNewProduct.tsx   ← REEMPLAZAR con el patch
+│   │   └── AdminEditProduct.tsx  ← REEMPLAZAR con el patch
+│   └── ...
+├── .env                     ← NUEVO: VITE_API_URL
+└── package.json
+
+backend/                     ← NUEVO: carpeta del backend
+├── src/
+│   ├── routes/products.ts   ← CRUD completo
+│   ├── routes/categories.ts ← GET categorías
+│   ├── server.ts
+│   ├── prismaClient.ts
+│   └── seed.ts
+├── prisma/schema.prisma
+└── .env                     ← DATABASE_URL aquí
+
+frontend-patches/            ← Archivos para copiar al frontend
+setup.sh                     ← Script para correr todo
+```
+
+---
+
+## 🚀 Setup con UN comando
+
+### Prerequisito — Crear la base de datos en MySQL Workbench
+
+```sql
+CREATE DATABASE gestion_restaurant;
+```
+
+### Configurar credenciales
+
+Edita `backend/.env`:
+```env
+DATABASE_URL="mysql://root:TU_PASSWORD@localhost:3306/gestion_restaurant"
+```
+
+### Copiar archivos al frontend
 
 ```bash
-# 1. Entrar a esta carpeta
-cd vistas-react
+# Ejecutar desde la carpeta que contiene gestion-restaurant/ y backend/
+mkdir -p gestion-restaurant/src/services
+cp frontend-patches/api.ts               gestion-restaurant/src/services/api.ts
+cp frontend-patches/AdminProducts.tsx    gestion-restaurant/src/pages/AdminProducts.tsx
+cp frontend-patches/AdminNewProduct.tsx  gestion-restaurant/src/pages/AdminNewProduct.tsx
+cp frontend-patches/AdminEditProduct.tsx gestion-restaurant/src/pages/AdminEditProduct.tsx
+cp frontend-patches/.env                 gestion-restaurant/.env
+```
 
-# 2. Instalar dependencias (solo la primera vez)
+### Correr todo
+
+```bash
+bash setup.sh
+```
+
+O manualmente en dos terminales:
+
+```bash
+# Terminal 1 — Backend
+cd backend
 npm install
+npx prisma generate
+npx prisma migrate dev --name init
+npx ts-node src/seed.ts
+npm run dev
 
-# 3. Iniciar el servidor de desarrollo
+# Terminal 2 — Frontend
+cd gestion-restaurant
+npm install
 npm run dev
 ```
 
-Luego abrir en el navegador: **http://localhost:5173/vistas**
+---
+
+## 📡 API Endpoints
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/products` | Lista con paginación y búsqueda |
+| GET | `/api/products/:id` | Producto por ID |
+| POST | `/api/products` | Crear (multipart/form-data) |
+| PUT | `/api/products/:id` | Editar (multipart/form-data) |
+| DELETE | `/api/products/:id` | Eliminar |
+| GET | `/api/categories` | Lista categorías |
+
+### Parámetros de búsqueda
+
+```
+GET /api/products?search=hamburguesa&categoryId=1&page=1&limit=10
+```
 
 ---
 
-## Vistas disponibles
+## 🗂️ Modelos (Prisma)
 
-| Ruta | Descripción |
-|------|-------------|
-| `/vistas` | Índice — punto de entrada con todas las vistas |
-| `/vistas/kiosk` | Menú del quiosco con carrito interactivo |
-| `/vistas/orders-ready` | Pantalla pública de órdenes listas |
-| `/vistas/admin/orders` | Admin – Gestión de órdenes |
-| `/vistas/admin/products` | Admin – Lista de productos |
-| `/vistas/admin/products/new` | Admin – Crear producto |
-| `/vistas/admin/products/:id/edit` | Admin – Editar producto |
+```prisma
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  icon     String
+  products Product[]
+}
 
-## Funcionalidad incluida
-
-- ✅ Filtro de productos por categoría
-- ✅ Carrito con agregar / quitar / cambiar cantidad
-- ✅ Cálculo automático de totales
-- ✅ Confirmación de pedido con nombre del cliente
-- ✅ Marcar órdenes como completadas
-- ✅ Búsqueda de productos en tiempo real
-- ✅ Paginación dinámica
-- ✅ Preview de imagen al subir archivo
-- ✅ Modal de confirmación para eliminar
-- ✅ Navegación completa entre todas las vistas
-
-## Estructura del proyecto
-
+model Product {
+  id         Int      @id @default(autoincrement())
+  name       String
+  price      Decimal
+  image      String?  // URL o emoji
+  categoryId Int
+  category   Category @relation(...)
+}
 ```
-vistas-react/
-├── index.html
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-├── CHANGELOG.md
-└── src/
-    ├── main.tsx          ← Entrada de la app
-    ├── App.tsx           ← Rutas (React Router v6)
-    ├── index.css
-    ├── data/
-    │   └── mockData.ts   ← Datos de prueba
-    ├── components/
-    │   ├── Logo.tsx
-    │   └── AdminSidebar.tsx
-    └── pages/
-        ├── VistasIndex.tsx
-        ├── KioskMenu.tsx
-        ├── OrdersReady.tsx
-        ├── AdminOrders.tsx
-        ├── AdminProducts.tsx
-        ├── AdminNewProduct.tsx
-        └── AdminEditProduct.tsx
-```
-
-## Stack
-
-- **React 18** + **TypeScript**
-- **Vite 5** (servidor de desarrollo ultrarrápido)
-- **React Router DOM v6** (navegación entre páginas)
-- Sin CSS frameworks — estilos inline fieles a los HTMLs originales
 
 ---
 
-## ⚠️ Nota sobre ejecución
+## 🛠️ Scripts backend
 
-Node.js debe estar en el **PATH del sistema** para que `npm` funcione desde cualquier terminal.  
-Si `npm` no se reconoce, descarga Node.js desde https://nodejs.org e instálalo.  
-Después de instalarlo, cierra y vuelve a abrir la terminal antes de ejecutar los comandos.
+```bash
+npm run dev          # Hot reload con ts-node-dev
+npm run db:migrate   # Crear tablas
+npm run db:seed      # Datos de prueba
+npm run db:studio    # Prisma Studio (GUI)
+```

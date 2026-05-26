@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
+import { createProduct } from '../services/api';
+import type { Category } from '../services/api';
 import { CATEGORIES } from '../data/mockData';
 
 const inputStyle: React.CSSProperties = {
@@ -22,6 +24,8 @@ export default function AdminNewProduct() {
   const [categoryId, setCategoryId] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -29,11 +33,31 @@ export default function AdminNewProduct() {
     if (file) setImagePreview(URL.createObjectURL(file));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    // En producción: POST /api/products con los datos del formulario
-    setSaved(true);
-    setTimeout(() => navigate('/vistas/admin/products'), 1800);
+    setError(null);
+    setLoading(true);
+
+    if (!name || !price || !categoryId) {
+      setError('Por favor completa todos los campos');
+      setLoading(false);
+      return;
+    }
+
+    const { product, error: err } = await createProduct(
+      name,
+      Number(price),
+      Number(categoryId),
+      imagePreview || undefined
+    );
+
+    if (err) {
+      setError(err);
+      setLoading(false);
+    } else {
+      setSaved(true);
+      setTimeout(() => navigate('/vistas/admin/products'), 1800);
+    }
   }
 
   return (
@@ -46,36 +70,29 @@ export default function AdminNewProduct() {
         </h1>
 
         {saved && (
-          <div
-            style={{
-              background: '#dcfce7',
-              border: '1px solid #86efac',
-              borderRadius: 4,
-              padding: '12px 16px',
-              marginBottom: 20,
-              color: '#166534',
-              fontWeight: 600,
-            }}
-          >
+          <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 4, padding: '12px 16px', marginBottom: 20, color: '#166534', fontWeight: 600 }}>
             ✓ Producto guardado correctamente. Redirigiendo...
+          </div>
+        )}
+
+        {error && (
+          <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 4, padding: '12px 16px', marginBottom: 20, color: '#991b1b', fontWeight: 600 }}>
+            ✗ {error}
           </div>
         )}
 
         <div style={{ background: '#fff', maxWidth: 640, borderRadius: 4, padding: 32 }}>
           <form onSubmit={handleSubmit}>
-            {/* Nombre */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', color: '#1e293b', fontWeight: 500, marginBottom: 8 }}>Nombre:</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre Producto" required style={inputStyle} />
             </div>
 
-            {/* Precio */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', color: '#1e293b', fontWeight: 500, marginBottom: 8 }}>Precio:</label>
-              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Precio Producto" required min={0} style={inputStyle} />
+              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Precio Producto" required min={0} step={0.01} style={inputStyle} />
             </div>
 
-            {/* Categoría */}
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', color: '#1e293b', fontWeight: 500, marginBottom: 8 }}>Categoría:</label>
               <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required style={inputStyle}>
@@ -86,19 +103,9 @@ export default function AdminNewProduct() {
               </select>
             </div>
 
-            {/* Imagen */}
             <div
               onClick={() => fileRef.current?.click()}
-              style={{
-                border: '2px dashed #d1d5db',
-                borderRadius: 8,
-                padding: 40,
-                textAlign: 'center',
-                cursor: 'pointer',
-                background: '#f9fafb',
-                marginBottom: 20,
-                transition: 'border-color .15s, background .15s',
-              }}
+              style={{ border: '2px dashed #d1d5db', borderRadius: 8, padding: 40, textAlign: 'center', cursor: 'pointer', background: '#f9fafb', marginBottom: 20, transition: 'border-color .15s, background .15s' }}
             >
               {imagePreview ? (
                 <img src={imagePreview} alt="preview" style={{ maxHeight: 140, objectFit: 'contain', borderRadius: 8 }} />
@@ -115,16 +122,17 @@ export default function AdminNewProduct() {
 
             <button
               type="submit"
+              disabled={loading}
               style={{
                 width: '100%', padding: 14,
-                background: '#4f46e5', color: '#fff',
+                background: loading ? '#9ca3af' : '#4f46e5', color: '#fff',
                 border: 'none', fontWeight: 700, fontSize: 16,
-                textTransform: 'uppercase', cursor: 'pointer',
+                textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer',
                 letterSpacing: 0.5, borderRadius: 2, marginTop: 8,
                 fontFamily: "'Inter', sans-serif",
               }}
             >
-              Guardar Producto
+              {loading ? 'Guardando...' : 'Guardar Producto'}
             </button>
           </form>
         </div>
