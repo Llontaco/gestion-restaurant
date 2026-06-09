@@ -1,80 +1,50 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import Logo from './Logo';
 
-type ActiveSection = 'orders' | 'products';
-
 const NAV_LINKS = [
-  { to: '/vistas/admin/orders',   label: 'Ordenes',     key: 'orders'   },
-  { to: '/vistas/admin/products', label: 'Productos',   key: 'products' },
-  { to: '/vistas/kiosk',          label: 'Ver Quiosco', key: 'kiosk'    },
-] as const;
+  { to: '/vistas/admin/orders',   label: 'Ordenes'   },
+  { to: '/vistas/admin/products', label: 'Productos' },
+  { to: '/vistas/kiosk',          label: 'Ver Quiosco', external: true },
+];
 
-export default function AdminSidebar({ active }: { active: ActiveSection }) {
+export default function AdminSidebar() {
   return (
-    <aside
-      style={{
-        width: 288,
-        minHeight: '100vh',
-        background: '#fff',
-        flexShrink: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        borderRight: '1px solid #e5e7eb',
-      }}
-    >
-      {/* Logo */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '24px 16px',
-          borderBottom: '1px solid #e5e7eb',
-        }}
-      >
-        <Logo />
+    <aside className="md:w-72 md:h-screen bg-white border-r border-gray-200 flex-shrink-0">
+      <Logo />
+      <div className="mt-10">
+        <p className="text-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+          Navegación
+        </p>
+        <nav className="flex flex-col">
+          {NAV_LINKS.map((link) =>
+            link.external ? (
+              <a
+                key={link.to}
+                href={link.to}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-700 font-semibold text-base px-5 py-3 border-l-4 border-transparent hover:bg-amber-50 hover:border-amber-400 transition-all"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) =>
+                  `font-semibold text-base px-5 py-3 border-l-4 transition-all ${
+                    isActive
+                      ? 'bg-amber-100 border-amber-400 text-amber-900'
+                      : 'border-transparent text-gray-700 hover:bg-amber-50 hover:border-amber-400'
+                  }`
+                }
+              >
+                {link.label}
+              </NavLink>
+            )
+          )}
+        </nav>
       </div>
-
-      {/* Label */}
-      <p
-        style={{
-          textAlign: 'center',
-          fontSize: 12,
-          fontWeight: 700,
-          color: '#9ca3af',
-          textTransform: 'uppercase',
-          letterSpacing: 1,
-          margin: '32px 0 12px',
-        }}
-      >
-        Navegación
-      </p>
-
-      {/* Nav */}
-      <nav>
-        {NAV_LINKS.map((link) => {
-          const isActive = active === link.key;
-          return (
-            <Link
-              key={link.to}
-              to={link.to}
-              target={link.key === 'kiosk' ? '_blank' : undefined}
-              style={{
-                display: 'block',
-                padding: '14px 20px',
-                textDecoration: 'none',
-                color: isActive ? '#92400e' : '#374151',
-                fontWeight: 600,
-                fontSize: 16,
-                borderLeft: isActive ? '4px solid #f59e0b' : '4px solid transparent',
-                background: isActive ? '#fef3c7' : 'transparent',
-                transition: 'all .15s',
-              }}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
-      </nav>
     </aside>
   );
 }

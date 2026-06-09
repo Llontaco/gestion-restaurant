@@ -1,136 +1,114 @@
-import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
-import { createProduct } from '../services/api';
+import { createProduct, getCategories } from '../services/api';
 import type { Category } from '../services/api';
-import { CATEGORIES } from '../data/mockData';
-
-const inputStyle: React.CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: 12,
-  background: '#f1f5f9',
-  border: 'none',
-  outline: 'none',
-  fontSize: 15,
-  color: '#111827',
-  fontFamily: "'Inter', sans-serif",
-};
 
 export default function AdminNewProduct() {
   const navigate = useNavigate();
+  const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    getCategories().then(({ categories: cats }) => setCategories(cats));
+  }, []);
+
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) setImagePreview(URL.createObjectURL(file));
+    if (file) { setImageFile(file); setImagePreview(URL.createObjectURL(file)); }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
-    if (!name || !price || !categoryId) {
-      setError('Por favor completa todos los campos');
-      setLoading(false);
-      return;
-    }
-
-    const { product, error: err } = await createProduct(
-      name,
-      Number(price),
-      Number(categoryId),
-      imagePreview || undefined
-    );
-
-    if (err) {
-      setError(err);
-      setLoading(false);
-    } else {
-      setSaved(true);
-      setTimeout(() => navigate('/vistas/admin/products'), 1800);
-    }
+    const { error: err } = await createProduct(name, Number(price), Number(categoryId), imageFile ?? undefined);
+    if (err) { setError(err); setLoading(false); }
+    else { setSaved(true); setTimeout(() => navigate('/vistas/admin/products'), 1800); }
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Inter', sans-serif", background: '#f3f4f6' }}>
-      <AdminSidebar active="products" />
+    <div className="md:flex min-h-screen bg-gray-100">
+      <AdminSidebar />
 
-      <main style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 900, color: '#111827', marginBottom: 28 }}>
-          Nuevo Producto
-        </h1>
+      <main className="md:flex-1 p-5 overflow-y-auto">
+        <div className="flex items-center justify-between mb-5">
+          <h1 className="text-3xl font-black text-gray-900">Nuevo Producto</h1>
+          <Link to="/vistas/admin/products" className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm">
+            ← Volver
+          </Link>
+        </div>
 
         {saved && (
-          <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 4, padding: '12px 16px', marginBottom: 20, color: '#166534', fontWeight: 600 }}>
+          <div className="bg-green-100 border border-green-300 text-green-800 rounded p-3 mb-4 font-semibold">
             ✓ Producto guardado correctamente. Redirigiendo...
           </div>
         )}
-
         {error && (
-          <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 4, padding: '12px 16px', marginBottom: 20, color: '#991b1b', fontWeight: 600 }}>
+          <div className="bg-red-100 border border-red-300 text-red-800 rounded p-3 mb-4 font-semibold">
             ✗ {error}
           </div>
         )}
 
-        <div style={{ background: '#fff', maxWidth: 640, borderRadius: 4, padding: 32 }}>
-          <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', color: '#1e293b', fontWeight: 500, marginBottom: 8 }}>Nombre:</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre Producto" required style={inputStyle} />
+        <div className="bg-white shadow rounded-lg p-8 max-w-2xl">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-slate-800 font-medium mb-2">Nombre:</label>
+              <input
+                type="text" value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="Nombre Producto" required
+                className="bg-slate-100 p-3 w-full outline-none"
+              />
             </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', color: '#1e293b', fontWeight: 500, marginBottom: 8 }}>Precio:</label>
-              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Precio Producto" required min={0} step={0.01} style={inputStyle} />
+            <div>
+              <label className="block text-slate-800 font-medium mb-2">Precio:</label>
+              <input
+                type="number" value={price} onChange={(e) => setPrice(e.target.value)}
+                placeholder="Precio Producto" required min={0} step={0.01}
+                className="bg-slate-100 p-3 w-full outline-none"
+              />
             </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', color: '#1e293b', fontWeight: 500, marginBottom: 8 }}>Categoría:</label>
-              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required style={inputStyle}>
+            <div>
+              <label className="block text-slate-800 font-medium mb-2">Categoría:</label>
+              <select
+                value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required
+                className="bg-slate-100 p-3 w-full outline-none"
+              >
                 <option value="">-- Seleccione --</option>
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
             </div>
 
+            {/* Image upload */}
             <div
               onClick={() => fileRef.current?.click()}
-              style={{ border: '2px dashed #d1d5db', borderRadius: 8, padding: 40, textAlign: 'center', cursor: 'pointer', background: '#f9fafb', marginBottom: 20, transition: 'border-color .15s, background .15s' }}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
             >
               {imagePreview ? (
-                <img src={imagePreview} alt="preview" style={{ maxHeight: 140, objectFit: 'contain', borderRadius: 8 }} />
+                <img src={imagePreview} alt="preview" className="max-h-36 object-contain rounded-lg mx-auto" />
               ) : (
                 <>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>📷</div>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: '#374151' }}>Subir imagen del producto</p>
-                  <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>Arrastra y suelta o haz clic para seleccionar</p>
-                  <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>PNG, JPG, WEBP hasta 5MB</p>
+                  <p className="text-4xl mb-3">📷</p>
+                  <p className="font-semibold text-gray-700">Subir imagen del producto</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP hasta 5MB</p>
                 </>
               )}
-              <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
             </div>
 
             <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%', padding: 14,
-                background: loading ? '#9ca3af' : '#4f46e5', color: '#fff',
-                border: 'none', fontWeight: 700, fontSize: 16,
-                textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer',
-                letterSpacing: 0.5, borderRadius: 2, marginTop: 8,
-                fontFamily: "'Inter', sans-serif",
-              }}
+              type="submit" disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-800 disabled:bg-gray-400 text-white w-full p-3 uppercase font-bold transition-colors"
             >
               {loading ? 'Guardando...' : 'Guardar Producto'}
             </button>

@@ -1,30 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
-import { CATEGORIES } from '../data/mockData';
-import { getProductById, updateProduct, deleteProduct } from '../services/api';
-import type { Product } from '../services/api';
-
-const inputStyle: React.CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: 12,
-  background: '#f1f5f9',
-  border: 'none',
-  outline: 'none',
-  fontSize: 15,
-  color: '#111827',
-  fontFamily: "'Inter', sans-serif",
-};
+import { getCategories, getProductById, updateProduct, deleteProduct } from '../services/api';
+import { formatCurrency, getImagePath } from '../utils';
+import type { Product, Category } from '../services/api';
 
 export default function AdminEditProduct() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  
+
+  const [categories, setCategories] = useState<Category[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [deleted, setDeleted] = useState(false);
@@ -35,221 +25,152 @@ export default function AdminEditProduct() {
   const [isDeleting, setIsDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Cargar producto
+  useEffect(() => { getCategories().then(({ categories: cats }) => setCategories(cats)); }, []);
+
   useEffect(() => {
-    async function loadProduct() {
-      if (!id) return;
-      setLoading(true);
-      const { product: data, error: err } = await getProductById(Number(id));
-      if (err) {
-        setError(err);
-      } else if (data) {
-        setProduct(data);
-        setName(data.name);
-        setPrice(String(data.price));
-        setCategoryId(String(data.categoryId));
-      }
+    if (!id) return;
+    getProductById(Number(id)).then(({ product: data, error: err }) => {
+      if (err) { setError(err); }
+      else if (data) { setProduct(data); setName(data.name); setPrice(String(data.price)); setCategoryId(String(data.categoryId)); }
       setLoading(false);
-    }
-    loadProduct();
+    });
   }, [id]);
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) setImagePreview(URL.createObjectURL(file));
+    if (file) { setImageFile(file); setImagePreview(URL.createObjectURL(file)); }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!id) return;
-    setError(null);
-    setIsSaving(true);
-
-    const { product: updated, error: err } = await updateProduct(Number(id), {
-      name,
-      price: Number(price),
-      categoryId: Number(categoryId),
-      image: imagePreview || undefined,
-    });
-
-    if (err) {
-      setError(err);
-      setIsSaving(false);
-    } else {
-      setProduct(updated);
-      setSaved(true);
-      setTimeout(() => navigate('/vistas/admin/products'), 1800);
-    }
+    setError(null); setIsSaving(true);
+    const { product: updated, error: err } = await updateProduct(Number(id), { name, price: Number(price), categoryId: Number(categoryId), imageFile: imageFile ?? undefined });
+    if (err) { setError(err); setIsSaving(false); }
+    else { setProduct(updated); setSaved(true); setTimeout(() => navigate('/vistas/admin/products'), 1800); }
   }
 
   async function handleDelete() {
     if (!id) return;
-    setShowModal(false);
-    setIsDeleting(true);
+    setShowModal(false); setIsDeleting(true);
     const { error: err } = await deleteProduct(Number(id));
-    if (err) {
-      setError(err);
-      setIsDeleting(false);
-    } else {
-      setDeleted(true);
-      setTimeout(() => navigate('/vistas/admin/products'), 1800);
-    }
+    if (err) { setError(err); setIsDeleting(false); }
+    else { setDeleted(true); setTimeout(() => navigate('/vistas/admin/products'), 1800); }
   }
 
+  if (loading) return (
+    <div className="md:flex min-h-screen bg-gray-100">
+      <AdminSidebar />
+      <main className="flex-1 flex items-center justify-center"><p className="text-gray-500">Cargando producto...</p></main>
+    </div>
+  );
+
+  if (!product) return (
+    <div className="md:flex min-h-screen bg-gray-100">
+      <AdminSidebar />
+      <main className="flex-1 flex items-center justify-center"><p className="text-gray-500">Producto no encontrado</p></main>
+    </div>
+  );
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Inter', sans-serif", background: '#f3f4f6' }}>
-      <AdminSidebar active="products" />
+    <div className="md:flex min-h-screen bg-gray-100">
+      <AdminSidebar />
 
-      <main style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <p style={{ fontSize: 16, color: '#6b7280' }}>Cargando producto...</p>
-          </div>
-        ) : error ? (
-          <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 4, padding: '12px 16px', color: '#991b1b', textAlign: 'center' }}>
-            Error: {error}
-          </div>
-        ) : product ? (
-          <>
-            <h1 style={{ fontSize: 28, fontWeight: 900, color: '#111827', marginBottom: 12 }}>
-              Editar Producto: {product.name}
-            </h1>
+      <main className="md:flex-1 p-5 overflow-y-auto">
+        <div className="flex items-center justify-between mb-5">
+          <h1 className="text-3xl font-black text-gray-900">Editar Producto</h1>
+          <Link to="/vistas/admin/products" className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm">
+            ← Volver
+          </Link>
+        </div>
 
-            <button
-              onClick={() => navigate('/vistas/admin/products')}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#111827', color: '#fff', padding: '10px 20px',
-                border: 'none', fontWeight: 600, fontSize: 14,
-                cursor: 'pointer', marginBottom: 24, borderRadius: 2,
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              ← Volver
-            </button>
-
-            {/* Banners */}
-            {(saved || deleted) && (
-              <div
-                style={{
-                  background: deleted ? '#fee2e2' : '#dcfce7',
-                  border: `1px solid ${deleted ? '#fca5a5' : '#86efac'}`,
-                  borderRadius: 4, padding: '12px 16px', marginBottom: 16,
-                  color: deleted ? '#991b1b' : '#166534', fontWeight: 600,
-                }}
-              >
-                {deleted ? '✓ Producto eliminado. Redirigiendo...' : '✓ Cambios guardados. Redirigiendo...'}
-              </div>
-            )}
-
-            {/* Modal Confirmación */}
-            {showModal && (
-              <div
-                style={{
-                  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-                }}
-              >
-                <div style={{ background: '#fff', padding: 32, borderRadius: 12, maxWidth: 400, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-                  <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
-                  <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>¿Eliminar producto?</p>
-                  <p style={{ color: '#6b7280', marginBottom: 24, fontSize: 15 }}>
-                    Esta acción no se puede deshacer.
-                  </p>
-                  <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                    <button
-                      onClick={() => setShowModal(false)}
-                      style={{ padding: '10px 24px', background: '#f3f4f6', border: 'none', fontWeight: 600, cursor: 'pointer', borderRadius: 4, fontFamily: "'Inter', sans-serif" }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      style={{ padding: '10px 24px', background: '#dc2626', color: '#fff', border: 'none', fontWeight: 700, cursor: isDeleting ? 'not-allowed' : 'pointer', borderRadius: 4, fontFamily: "'Inter', sans-serif" }}
-                    >
-                      {isDeleting ? 'Eliminando...' : 'Eliminar'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div style={{ background: '#fff', maxWidth: 640, borderRadius: 4, padding: 32 }}>
-              <form onSubmit={handleSubmit}>
-                {/* Nombre */}
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'block', color: '#1e293b', fontWeight: 500, marginBottom: 8 }}>Nombre:</label>
-                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} required style={inputStyle} />
-                </div>
-
-                {/* Precio */}
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'block', color: '#1e293b', fontWeight: 500, marginBottom: 8 }}>Precio:</label>
-                  <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} required min={0} step={0.01} style={inputStyle} />
-                </div>
-
-                {/* Categoría */}
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: 'block', color: '#1e293b', fontWeight: 500, marginBottom: 8 }}>Categoría:</label>
-                  <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required style={inputStyle}>
-                    <option value="">-- Seleccione --</option>
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Imagen actual */}
-                <div style={{ marginBottom: 16 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Imagen actual:</p>
-                  <div style={{ width: 160, height: 120, background: 'linear-gradient(135deg, #fef3c7, #fde68a)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, border: '1px solid #e5e7eb' }}>
-                    {product.image || '📦'}
-                  </div>
-                </div>
-
-                {/* Nueva imagen */}
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  style={{ border: '2px dashed #d1d5db', borderRadius: 8, padding: 32, textAlign: 'center', cursor: 'pointer', background: '#f9fafb', marginBottom: 20 }}
-                >
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="nueva imagen" style={{ maxHeight: 100, objectFit: 'contain' }} />
-                  ) : (
-                    <>
-                      <div style={{ fontSize: 36, marginBottom: 8 }}>📷</div>
-                      <p style={{ fontSize: 15, fontWeight: 600, color: '#374151' }}>Cambiar imagen</p>
-                      <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>PNG, JPG, WEBP hasta 5MB</p>
-                    </>
-                  )}
-                  <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
-                </div>
-
-                <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                  <button 
-                    type="submit" 
-                    disabled={isSaving}
-                    style={{ flex: 1, padding: 14, background: isSaving ? '#9ca3af' : '#4f46e5', color: '#fff', border: 'none', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', cursor: isSaving ? 'not-allowed' : 'pointer', borderRadius: 2, fontFamily: "'Inter', sans-serif" }}
-                  >
-                    {isSaving ? 'Guardando...' : 'Guardar Cambios'}
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setShowModal(true)}
-                    disabled={isDeleting}
-                    style={{ padding: '14px 24px', background: '#dc2626', color: '#fff', border: 'none', fontWeight: 700, fontSize: 16, cursor: isDeleting ? 'not-allowed' : 'pointer', borderRadius: 2, fontFamily: "'Inter', sans-serif" }}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </form>
-            </div>
-          </>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <p style={{ fontSize: 16, color: '#6b7280' }}>Producto no encontrado</p>
+        {(saved || deleted) && (
+          <div className={`${deleted ? 'bg-red-100 border-red-300 text-red-800' : 'bg-green-100 border-green-300 text-green-800'} border rounded p-3 mb-4 font-semibold`}>
+            {deleted ? '✓ Producto eliminado. Redirigiendo...' : '✓ Cambios guardados. Redirigiendo...'}
           </div>
         )}
+        {error && (
+          <div className="bg-red-100 border border-red-300 text-red-800 rounded p-3 mb-4">
+            Error: {error}
+          </div>
+        )}
+
+        {/* Modal confirmación */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white p-8 rounded-xl max-w-sm w-full text-center shadow-2xl">
+              <p className="text-5xl mb-3">⚠️</p>
+              <p className="text-xl font-bold mb-2">¿Eliminar producto?</p>
+              <p className="text-gray-500 mb-6 text-sm">Esta acción no se puede deshacer.</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={() => setShowModal(false)} className="px-6 py-2 bg-gray-100 rounded font-semibold">Cancelar</button>
+                <button onClick={handleDelete} disabled={isDeleting} className="px-6 py-2 bg-red-600 text-white rounded font-bold disabled:opacity-60">
+                  {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white shadow rounded-lg p-8 max-w-2xl">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-slate-800 font-medium mb-2">Nombre:</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="bg-slate-100 p-3 w-full outline-none" />
+            </div>
+            <div>
+              <label className="block text-slate-800 font-medium mb-2">Precio:</label>
+              <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} required min={0} step={0.01} className="bg-slate-100 p-3 w-full outline-none" />
+            </div>
+            <div>
+              <label className="block text-slate-800 font-medium mb-2">Categoría:</label>
+              <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required className="bg-slate-100 p-3 w-full outline-none">
+                <option value="">-- Seleccione --</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Current image */}
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-2">Imagen actual:</p>
+              <div className="w-40 h-32 bg-amber-50 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
+                {product.image && product.image.startsWith('http') ? (
+                  <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-5xl">{product.image || '📦'}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Upload new image */}
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+            >
+              {imagePreview ? (
+                <img src={imagePreview} alt="nueva imagen" className="max-h-28 object-contain mx-auto" />
+              ) : (
+                <>
+                  <p className="text-3xl mb-2">📷</p>
+                  <p className="font-semibold text-gray-700">Cambiar imagen</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP hasta 5MB</p>
+                </>
+              )}
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+            </div>
+
+            <div className="flex gap-3">
+              <button type="submit" disabled={isSaving} className="flex-1 bg-indigo-600 hover:bg-indigo-800 disabled:bg-gray-400 text-white p-3 uppercase font-bold transition-colors">
+                {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+              <button type="button" onClick={() => setShowModal(true)} disabled={isDeleting} className="px-6 bg-red-600 hover:bg-red-800 text-white font-bold transition-colors disabled:opacity-60">
+                Eliminar
+              </button>
+            </div>
+          </form>
+        </div>
       </main>
     </div>
   );

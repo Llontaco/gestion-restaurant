@@ -1,19 +1,9 @@
-export default function Logo({ size = 120 }: { size?: number }) {
+export default function Logo() {
   return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: size * 0.35,
-        flexShrink: 0,
-      }}
-    >
-      🍽️
+    <div className="flex justify-center mt-5">
+      <div className="w-32 h-32">
+        <img src="/logo.svg" alt="Logo Quiosko" className="w-full h-full object-contain" />
+      </div>
     </div>
   );
 }

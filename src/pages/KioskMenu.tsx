@@ -1,22 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
-import { CATEGORIES, PRODUCTS, type OrderProduct } from '../data/mockData';
+import { getCategories, getProducts, createOrder } from '../services/api';
+import { getImagePath, formatCurrency } from '../utils';
+import type { Category, Product, CartItem } from '../services/api';
 
 export default function KioskMenu() {
   const navigate = useNavigate();
-  const [activeCategoryId, setActiveCategoryId] = useState(1);
-  const [cart, setCart] = useState<OrderProduct[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [clientName, setClientName] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = PRODUCTS.filter((p) => p.categoryId === activeCategoryId);
+  useEffect(() => {
+    async function load() {
+      const { categories: cats, error: err } = await getCategories();
+      if (err) { setError(err); }
+      else {
+        setCategories(cats);
+        if (cats.length > 0) setActiveCategoryId(cats[0].id);
+      }
+      setLoading(false);
+    }
+    load();
+  }, []);
 
-  function addToCart(productId: number) {
-    const product = PRODUCTS.find((p) => p.id === productId)!;
+  useEffect(() => {
+    if (!activeCategoryId) return;
+    getProducts(undefined, activeCategoryId, 1, 50).then(({ products: prods }) => setProducts(prods));
+  }, [activeCategoryId]);
+
+  function addToCart(product: Product) {
     setCart((prev) => {
-      const existing = prev.find((i) => i.id === productId);
-      if (existing) return prev.map((i) => i.id === productId ? { ...i, quantity: i.quantity + 1 } : i);
+      const existing = prev.find((i) => i.id === product.id);
+      if (existing) return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
       return [...prev, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
     });
   }
@@ -27,148 +49,101 @@ export default function KioskMenu() {
 
   function changeQty(id: number, delta: number) {
     setCart((prev) =>
-      prev
-        .map((i) => i.id === id ? { ...i, quantity: i.quantity + delta } : i)
-        .filter((i) => i.quantity > 0)
+      prev.map((i) => i.id === id ? { ...i, quantity: i.quantity + delta } : i).filter((i) => i.quantity > 0)
     );
   }
 
   const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
 
-  function handleConfirm(e: React.FormEvent) {
+  async function handleConfirm(e: React.FormEvent) {
     e.preventDefault();
     if (!clientName.trim() || cart.length === 0) return;
-    setConfirmed(true);
+    setSubmitting(true);
+    setError(null);
+    const { error: err } = await createOrder(clientName, total, cart);
+    if (err) { setError(err); setSubmitting(false); }
+    else { setConfirmed(true); setSubmitting(false); }
   }
 
-  /* ── PANTALLA DE CONFIRMACIÓN ── */
+  /* ── CONFIRMACIÓN ── */
   if (confirmed) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: "'Inter', sans-serif",
-          background: '#f3f4f6',
-          gap: 20,
-          textAlign: 'center',
-          padding: 24,
-        }}
-      >
-        <Logo size={120} />
-        <div style={{ fontSize: 56 }}>🎉</div>
-        <h1 style={{ fontSize: 36, fontWeight: 900, color: '#111827' }}>
-          ¡Pedido Confirmado!
-        </h1>
-        <p style={{ fontSize: 18, color: '#6b7280' }}>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 gap-5 text-center p-6">
+        <Logo />
+        <p className="text-6xl">🎉</p>
+        <h1 className="text-4xl font-black text-gray-900">¡Pedido Confirmado!</h1>
+        <p className="text-lg text-gray-500">
           Gracias <strong>{clientName}</strong>, tu pedido está siendo preparado.
         </p>
-        <p style={{ fontSize: 22, fontWeight: 900, color: '#f59e0b' }}>
-          Total: ${total.toFixed(2)}
-        </p>
+        <p className="text-2xl font-black text-amber-500">{formatCurrency(total)}</p>
         <button
           onClick={() => { setCart([]); setClientName(''); setConfirmed(false); }}
-          style={{
-            marginTop: 8,
-            background: '#111827',
-            color: '#fff',
-            border: 'none',
-            padding: '12px 36px',
-            fontWeight: 700,
-            fontSize: 15,
-            cursor: 'pointer',
-            borderRadius: 4,
-            textTransform: 'uppercase',
-          }}
+          className="mt-2 bg-black text-white font-bold px-9 py-3 rounded uppercase"
         >
           Nuevo Pedido
         </button>
-        <button
-          onClick={() => navigate('/vistas')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#6b7280',
-            fontSize: 14,
-            cursor: 'pointer',
-            textDecoration: 'underline',
-          }}
-        >
+        <button onClick={() => navigate('/vistas')} className="text-gray-400 text-sm underline">
           ← Volver al índice
         </button>
       </div>
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500 text-lg">Cargando menú...</p>
+      </div>
+    );
+  }
+
   /* ── VISTA PRINCIPAL ── */
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Inter', sans-serif", background: '#f3f4f6' }}>
+    <div className="md:flex min-h-screen bg-gray-100">
 
       {/* ── CATEGORÍAS ── */}
-      <aside style={{ width: 288, minHeight: '100vh', background: '#fff', display: 'flex', flexDirection: 'column', flexShrink: 0, borderRight: '1px solid #e5e7eb' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 16px', borderBottom: '1px solid #e5e7eb' }}>
-          <Logo />
-        </div>
-        <nav>
-          {CATEGORIES.map((cat) => (
+      <aside className="md:w-72 md:h-screen bg-white border-r border-gray-200 flex-shrink-0">
+        <Logo />
+        <nav className="mt-10">
+          {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setActiveCategoryId(cat.id)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                padding: '12px 16px',
-                borderTop: '1px solid #e5e7eb',
-                width: '100%',
-                textAlign: 'left',
-                background: activeCategoryId === cat.id ? '#fbbf24' : 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 700,
-                fontSize: 18,
-                color: '#111827',
-                fontFamily: "'Inter', sans-serif",
-                transition: 'background .15s',
-              }}
+              className={`${activeCategoryId === cat.id ? 'bg-amber-400' : ''} flex items-center gap-4 w-full border-t border-gray-200 p-3 last:border-b cursor-pointer hover:bg-amber-50 transition-colors`}
             >
-              <div style={{ width: 56, height: 56, background: '#f3f4f6', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>
-                {cat.icon}
-              </div>
-              {cat.name}
+              <span className="text-xl font-bold text-gray-900">{cat.name}</span>
             </button>
           ))}
         </nav>
       </aside>
 
       {/* ── PRODUCTOS ── */}
-      <main style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 900, color: '#111827', marginBottom: 20 }}>
+      <main className="md:flex-1 md:h-screen md:overflow-y-scroll p-5">
+        <h1 className="text-3xl font-black text-gray-900 mb-5">
           Elige y personaliza tu pedido a continuación
         </h1>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
-          {filtered.map((product) => (
-            <div key={product.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ width: '100%', height: 200, background: 'linear-gradient(135deg, #fef3c7, #fde68a)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 64 }}>
-                {product.image}
+        <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-4 gap-4 items-start">
+          {products.map((product) => (
+            <div key={product.id} className="border bg-white">
+              <div className="w-full h-48 overflow-hidden bg-amber-50 flex items-center justify-center">
+                {getImagePath(product.image) ? (
+                  <img
+                    src={getImagePath(product.image)}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-6xl">📦</span>
+                )}
               </div>
-              <div style={{ padding: 20 }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: '#111827' }}>{product.name}</h3>
-                <p style={{ fontSize: 32, fontWeight: 900, color: '#f59e0b', marginTop: 12 }}>
-                  ${product.price.toFixed(2)}
+              <div className="p-5">
+                <h3 className="text-2xl font-bold text-gray-900">{product.name}</h3>
+                <p className="mt-5 font-black text-4xl text-amber-500">
+                  {formatCurrency(Number(product.price))}
                 </p>
                 <button
-                  onClick={() => addToCart(product.id)}
-                  style={{
-                    display: 'block', width: '100%', marginTop: 16,
-                    background: '#111827', color: '#fff', border: 'none',
-                    padding: 10, fontWeight: 700, fontSize: 15,
-                    cursor: 'pointer', textTransform: 'uppercase',
-                    letterSpacing: 0.5, borderRadius: 2, fontFamily: "'Inter', sans-serif",
-                  }}
+                  onClick={() => addToCart(product)}
+                  className="bg-black text-white w-full mt-5 p-3 uppercase font-bold cursor-pointer hover:bg-gray-800 transition-colors"
                 >
                   Agregar
                 </button>
@@ -179,63 +154,59 @@ export default function KioskMenu() {
       </main>
 
       {/* ── CARRITO ── */}
-      <aside style={{ width: 320, minHeight: '100vh', background: '#fff', borderLeft: '1px solid #e5e7eb', padding: 20, display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: 28, fontWeight: 900, color: '#111827', marginBottom: 16 }}>
-          MIS PEDIDOS
-        </h2>
+      <aside className="md:w-72 lg:w-96 md:h-screen md:overflow-y-scroll p-5 bg-white border-l border-gray-200">
+        <h2 className="text-4xl font-black text-center text-gray-900">MIS PEDIDOS</h2>
+
+        {error && (
+          <div className="mt-4 bg-red-100 border border-red-300 text-red-800 rounded p-3 text-sm">
+            {error}
+          </div>
+        )}
 
         {cart.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#6b7280', marginTop: 32, fontSize: 15 }}>
-            Agrega productos para comenzar tu pedido.
-          </p>
+          <p className="text-center text-gray-400 my-10">El pedido está vacío</p>
         ) : (
-          <>
+          <div className="mt-5">
             {cart.map((item) => (
-              <div key={item.id} style={{ borderTop: '1px solid #e5e7eb', padding: '16px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <p style={{ fontWeight: 700, fontSize: 17 }}>{item.name}</p>
-                  <button onClick={() => removeFromCart(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 22, lineHeight: 1 }}>✕</button>
+              <div key={item.id} className="border-t border-gray-200 py-4">
+                <div className="flex justify-between items-start">
+                  <p className="font-bold text-gray-900">{item.name}</p>
+                  <button onClick={() => removeFromCart(item.id)} className="text-red-500 font-bold text-lg leading-none">✕</button>
                 </div>
-                <p style={{ color: '#f59e0b', fontWeight: 900, fontSize: 20, margin: '4px 0' }}>
-                  ${item.price.toFixed(2)}
-                </p>
-                <div style={{ display: 'flex', gap: 20, alignItems: 'center', background: '#f3f4f6', padding: '8px 24px', borderRadius: 8, width: 'fit-content', marginTop: 8 }}>
-                  <button onClick={() => changeQty(item.id, -1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, fontWeight: 700, color: '#374151' }}>−</button>
-                  <span style={{ fontSize: 16, fontWeight: 900 }}>{item.quantity}</span>
-                  <button onClick={() => changeQty(item.id, 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, fontWeight: 700, color: '#374151' }}>+</button>
+                <p className="text-amber-500 font-black text-xl mt-1">{formatCurrency(item.price)}</p>
+                <div className="flex gap-5 items-center bg-gray-100 px-6 py-2 rounded-lg w-fit mt-2">
+                  <button onClick={() => changeQty(item.id, -1)} className="font-bold text-xl text-gray-700">−</button>
+                  <span className="font-black">{item.quantity}</span>
+                  <button onClick={() => changeQty(item.id, 1)} className="font-bold text-xl text-gray-700">+</button>
                 </div>
-                <p style={{ fontSize: 17, fontWeight: 900, color: '#374151', marginTop: 8 }}>
-                  Subtotal: <span style={{ fontWeight: 400 }}>${(item.price * item.quantity).toFixed(2)}</span>
+                <p className="text-sm font-bold text-gray-600 mt-2">
+                  Subtotal: <span className="font-normal">{formatCurrency(item.price * item.quantity)}</span>
                 </p>
               </div>
             ))}
 
-            <p style={{ fontSize: 20, textAlign: 'center', marginTop: 'auto', paddingTop: 32 }}>
-              Total a pagar: <strong>${total.toFixed(2)}</strong>
+            <p className="text-2xl mt-10 text-center">
+              Total a pagar: <span className="font-bold">{formatCurrency(total)}</span>
             </p>
 
-            <form onSubmit={handleConfirm} style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form onSubmit={handleConfirm} className="w-full mt-10 space-y-5">
               <input
                 type="text"
                 placeholder="Tu Nombre"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 required
-                style={{ border: '1px solid #e5e7eb', padding: 10, width: '100%', fontSize: 15, fontFamily: "'Inter', sans-serif" }}
+                className="bg-white border border-gray-200 p-2 w-full"
               />
               <button
                 type="submit"
-                style={{
-                  padding: 10, background: '#111827', color: '#fff',
-                  border: 'none', fontWeight: 700, fontSize: 15,
-                  textTransform: 'uppercase', cursor: 'pointer',
-                  borderRadius: 2, fontFamily: "'Inter', sans-serif",
-                }}
+                disabled={submitting}
+                className="py-2 rounded uppercase text-white bg-black w-full font-bold cursor-pointer disabled:bg-gray-400"
               >
-                Confirmar Pedido
+                {submitting ? 'Enviando...' : 'Confirmar Pedido'}
               </button>
             </form>
-          </>
+          </div>
         )}
       </aside>
     </div>

@@ -1,85 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Logo from '../components/Logo';
-import { ORDERS_MOCK, type Order } from '../data/mockData';
+import { getReadyOrders } from '../services/api';
+import type { Order } from '../services/api';
 
 export default function OrdersReady() {
-  const [orders] = useState<Order[]>(ORDERS_MOCK.filter((o) => o.status === 'ready'));
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchOrders = useCallback(async () => {
+    const { orders: data } = await getReadyOrders();
+    setOrders(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 5000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
 
   return (
-    <div
-      style={{
-        fontFamily: "'Inter', sans-serif",
-        background: '#fff',
-        minHeight: '100vh',
-        paddingBottom: 60,
-      }}
-    >
-      <h1
-        style={{
-          textAlign: 'center',
-          marginTop: 80,
-          fontSize: 60,
-          fontWeight: 900,
-          color: '#111827',
-          letterSpacing: -1,
-        }}
-      >
-        Ordenes Listas
-      </h1>
+    <div className="min-h-screen bg-white pb-16">
+      <h1 className="text-center mt-20 text-6xl font-black text-gray-900">Ordenes Listas</h1>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 32 }}>
-        <Logo size={140} />
-      </div>
+      <Logo />
 
-      {orders.length === 0 ? (
-        <p style={{ textAlign: 'center', marginTop: 60, color: '#6b7280', fontSize: 18 }}>
-          No hay órdenes listas en este momento.
-        </p>
+      {loading ? (
+        <p className="text-center mt-10 text-gray-500">Cargando órdenes...</p>
+      ) : orders.length === 0 ? (
+        <p className="text-center mt-10 text-gray-500">No hay ordenes listas</p>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 20,
-            maxWidth: 900,
-            margin: '40px auto 0',
-            padding: '0 20px',
-          }}
-        >
+        <div className="grid grid-cols-2 gap-5 max-w-5xl mx-auto mt-10 px-5">
           {orders.map((order) => (
-            <div
-              key={order.id}
-              style={{
-                background: '#fff',
-                borderRadius: 12,
-                boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
-                padding: 20,
-                border: '2px solid #fbbf24',
-              }}
-            >
-              <p style={{ fontSize: 22, fontWeight: 700, color: '#475569', marginBottom: 16 }}>
-                Cliente: {order.clientName}
-              </p>
-              <ul style={{ listStyle: 'none', borderTop: '1px solid #e5e7eb' }}>
-                {order.products.map((p, idx) => (
-                  <li
-                    key={idx}
-                    style={{
-                      display: 'flex',
-                      padding: '20px 0',
-                      borderBottom: '1px solid #e5e7eb',
-                      fontSize: 17,
-                      color: '#374151',
-                    }}
-                  >
-                    <span style={{ fontWeight: 700, marginRight: 8 }}>({p.quantity})</span>
-                    {p.name}
+            <div key={order.id} className="bg-white shadow p-5 space-y-5 rounded-lg border-2 border-amber-400">
+              <p className="text-2xl font-bold text-slate-600">Cliente: {order.name}</p>
+              <ul className="divide-y divide-gray-200 border-t border-gray-200 text-sm font-medium text-gray-500">
+                {order.orderItems.map((item) => (
+                  <li key={item.id} className="flex py-6 text-lg">
+                    <span className="font-bold mr-2">({item.quantity})</span>
+                    {item.product.name}
                   </li>
                 ))}
               </ul>
-              <p style={{ marginTop: 12, fontWeight: 900, fontSize: 16, color: '#f59e0b' }}>
-                Total: ${order.total.toFixed(2)}
-              </p>
             </div>
           ))}
         </div>

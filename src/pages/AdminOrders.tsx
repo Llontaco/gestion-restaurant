@@ -1,109 +1,75 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AdminSidebar from '../components/AdminSidebar';
-import { ORDERS_MOCK, type Order } from '../data/mockData';
+import { getPendingOrders, completeOrder } from '../services/api';
+import { formatCurrency } from '../utils';
+import type { Order } from '../services/api';
 
 export default function AdminOrders() {
-  const [orders, setOrders] = useState<Order[]>(
-    ORDERS_MOCK.filter((o) => o.status === 'pending')
-  );
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [completing, setCompleting] = useState<number | null>(null);
 
-  function markCompleted(id: number) {
+  const fetchOrders = useCallback(async () => {
+    const { orders: data } = await getPendingOrders();
+    setOrders(data);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 5000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
+
+  async function handleComplete(id: number) {
+    setCompleting(id);
+    await completeOrder(id);
     setOrders((prev) => prev.filter((o) => o.id !== id));
+    setCompleting(null);
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Inter', sans-serif", background: '#f3f4f6' }}>
-      <AdminSidebar active="orders" />
+    <div className="md:flex min-h-screen bg-gray-100">
+      <AdminSidebar />
 
-      <main style={{ flex: 1, padding: 24, overflowY: 'auto' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 900, color: '#111827', marginBottom: 24 }}>
-          Administrar ordenes
-        </h1>
+      <main className="md:flex-1 p-5 overflow-y-auto">
+        <h1 className="text-3xl font-black text-gray-900 mb-5">Administrar ordenes</h1>
 
-        {orders.length === 0 ? (
-          <div style={{ textAlign: 'center', marginTop: 60 }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
-            <p style={{ color: '#6b7280', fontSize: 17 }}>
-              No hay órdenes pendientes. ¡Todo al día!
-            </p>
-          </div>
+        {loading ? (
+          <p className="text-center text-gray-500 mt-20">Cargando órdenes...</p>
+        ) : orders.length === 0 ? (
+          <p className="text-center text-gray-500 mt-20">No hay ordenes pendientes</p>
         ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-              gap: 20,
-            }}
-          >
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5 mt-5">
             {orders.map((order) => (
               <section
                 key={order.id}
-                style={{ background: '#f9fafb', borderRadius: 8, padding: '24px 24px 20px' }}
+                className="mt-4 rounded-lg bg-gray-50 px-4 py-6 sm:p-6 lg:mt-0 lg:p-8 space-y-4"
+                aria-labelledby="summary-heading"
               >
-                <p style={{ fontSize: 20, fontWeight: 500, color: '#111827', marginBottom: 4 }}>
-                  Cliente: {order.clientName}
-                </p>
-                <p style={{ fontSize: 15, fontWeight: 500, color: '#111827', marginBottom: 16 }}>
-                  Productos Ordenados:
-                </p>
-                <dl>
-                  {order.products.map((p, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        borderTop: '1px solid #e5e7eb',
-                        padding: '12px 0',
-                      }}
-                    >
-                      <dt style={{ fontWeight: 900, fontSize: 14, color: '#4b5563' }}>
-                        ({p.quantity})
+                <p className="text-2xl font-medium text-gray-900">Cliente: {order.name}</p>
+                <p className="text-lg font-medium text-gray-900">Productos Ordenados:</p>
+                <dl className="mt-6 space-y-4">
+                  {order.orderItems.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 border-t border-gray-200 pt-4">
+                      <dt className="text-sm text-gray-600">
+                        <span className="font-black">({item.quantity})</span>
                       </dt>
-                      <dd style={{ fontSize: 14, color: '#111827', fontWeight: 500 }}>
-                        {p.name}
-                      </dd>
+                      <dd className="text-sm font-medium text-gray-900">{item.product.name}</dd>
                     </div>
                   ))}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      borderTop: '1px solid #e5e7eb',
-                      padding: '16px 0 0',
-                      marginTop: 8,
-                    }}
-                  >
-                    <dt style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>Total a Pagar:</dt>
-                    <dd style={{ fontSize: 16, fontWeight: 500, color: '#111827' }}>
-                      ${order.total.toFixed(2)}
-                    </dd>
+                  <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+                    <dt className="text-base font-medium text-gray-900">Total a Pagar:</dt>
+                    <dd className="text-base font-medium text-gray-900">{formatCurrency(Number(order.total))}</dd>
                   </div>
                 </dl>
+
                 <button
-                  onClick={() => markCompleted(order.id)}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    marginTop: 16,
-                    background: '#4f46e5',
-                    color: '#fff',
-                    border: 'none',
-                    padding: 12,
-                    fontWeight: 700,
-                    fontSize: 14,
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    borderRadius: 2,
-                    letterSpacing: 0.5,
-                    fontFamily: "'Inter', sans-serif",
-                    transition: 'background .15s',
-                  }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = '#3730a3')}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = '#4f46e5')}
+                  onClick={() => handleComplete(order.id)}
+                  disabled={completing === order.id}
+                  className="bg-indigo-600 hover:bg-indigo-800 disabled:bg-gray-400 text-white w-full mt-5 p-3 uppercase font-bold cursor-pointer transition-colors"
                 >
-                  Marcar Orden Completada
+                  {completing === order.id ? 'Procesando...' : 'Marcar Orden Completada'}
                 </button>
               </section>
             ))}

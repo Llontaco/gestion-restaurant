@@ -5,6 +5,7 @@ import 'dotenv/config';
 
 import categoriesRouter from './routes/categories';
 import productsRouter from './routes/products';
+import ordersRouter from './routes/orders';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +27,7 @@ app.use(`/${uploadsDir}`, express.static(path.join(process.cwd(), uploadsDir)));
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/categories', categoriesRouter);
 app.use('/api/products', productsRouter);
+app.use('/api/orders', ordersRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -43,6 +45,10 @@ app.listen(PORT, () => {
   console.log(`  PUT    /api/products/:id`);
   console.log(`  DELETE /api/products/:id`);
   console.log(`  GET    /api/categories`);
+  console.log(`  GET    /api/orders/pending`);
+  console.log(`  GET    /api/orders/ready`);
+  console.log(`  POST   /api/orders`);
+  console.log(`  PUT    /api/orders/:id/complete`);
   console.log(`  GET    /api/health\n`);
 });
 

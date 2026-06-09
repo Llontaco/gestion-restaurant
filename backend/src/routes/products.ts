@@ -32,8 +32,11 @@ const upload = multer({
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function imageUrl(req: Request, filename: string | null): string | null {
   if (!filename) return null;
-  // If it's already a URL or emoji, return as-is
+  // already a full URL or an emoji (no slash) → return as-is
   if (filename.startsWith('http') || !filename.includes('/')) return filename;
+  // paths starting with / are frontend public-folder assets → return as-is
+  if (filename.startsWith('/')) return filename;
+  // otherwise it's an uploads/ file → build full backend URL
   return `${req.protocol}://${req.get('host')}/${filename}`;
 }
 
