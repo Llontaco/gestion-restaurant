@@ -3,7 +3,7 @@ import prisma from '../prismaClient';
 
 const router = Router();
 
-// GET /api/orders/pending — órdenes pendientes (status = false)
+// GETt /api/orders/pending — órdenes pendientes (status = false)
 router.get('/pending', async (_req: Request, res: Response) => {
   try {
     const orders = await prisma.order.findMany({
