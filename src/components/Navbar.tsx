@@ -1,6 +1,6 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
-import { SESSION_USER } from '../config';
+import { useAuth } from '../context/AuthContext';
 import { ClipboardIcon, StoreIcon, LogoutIcon } from './icons';
 
 function tabClass(active: boolean) {
@@ -11,8 +11,15 @@ function tabClass(active: boolean) {
 
 export default function Navbar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const isAdmin = pathname.startsWith('/vistas/admin');
   const isKiosk = pathname.startsWith('/vistas/kiosk');
+
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
@@ -35,19 +42,19 @@ export default function Navbar() {
           </Link>
         </nav>
 
-        {/* Sesión referencial */}
+        {/* Sesión */}
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="hidden sm:block text-right leading-tight">
             <p className="text-xs text-gray-500">Sesión iniciada como</p>
-            <p className="font-bold text-gray-900">{SESSION_USER}</p>
+            <p className="font-bold text-gray-900">{user?.name}</p>
           </div>
-          <Link
-            to="/vistas"
+          <button
+            onClick={handleLogout}
             className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold text-sm px-4 py-2.5 rounded-lg transition-colors"
           >
             <LogoutIcon className="w-4 h-4" />
             <span className="hidden sm:inline">Cerrar Sesión</span>
-          </Link>
+          </button>
         </div>
       </div>
     </header>

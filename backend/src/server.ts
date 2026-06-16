@@ -6,6 +6,7 @@ import 'dotenv/config';
 import categoriesRouter from './routes/categories';
 import productsRouter from './routes/products';
 import ordersRouter from './routes/orders';
+import authRouter from './routes/auth';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,6 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(`/${uploadsDir}`, express.static(path.join(process.cwd(), uploadsDir)));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
+app.use('/api/auth', authRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/orders', ordersRouter);
@@ -39,6 +41,8 @@ app.listen(PORT, () => {
   console.log(`\n🚀 Backend corriendo en: http://localhost:${PORT}`);
   console.log(`📦 API disponible en:    http://localhost:${PORT}/api`);
   console.log(`\nEndpoints disponibles:`);
+  console.log(`  POST   /api/auth/register`);
+  console.log(`  POST   /api/auth/login`);
   console.log(`  GET    /api/products`);
   console.log(`  GET    /api/products/:id`);
   console.log(`  POST   /api/products`);

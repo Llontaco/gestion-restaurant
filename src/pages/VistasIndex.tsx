@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import BrandLogo from '../components/BrandLogo';
 import { StoreIcon, ClipboardIcon, TagIcon } from '../components/icons';
-import { SESSION_USER } from '../config';
+import { useAuth } from '../context/AuthContext';
 
 const ACCESS_POINTS = [
   {
@@ -28,6 +28,7 @@ const ACCESS_POINTS = [
 ];
 
 export default function VistasIndex() {
+  const { user } = useAuth();
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-md">
@@ -38,7 +39,7 @@ export default function VistasIndex() {
         <h1 className="font-serif text-4xl font-bold text-center text-gray-900 mb-1">Fresh Coffee</h1>
         <p className="text-center text-gray-500 mb-2 text-sm">Sistema de gestión de restaurante</p>
         <p className="text-center text-gray-400 mb-10 text-xs">
-          Sesión iniciada como <span className="font-semibold text-gray-600">{SESSION_USER}</span>
+          Sesión iniciada como <span className="font-semibold text-gray-600">{user?.name}</span>
         </p>
 
         <div className="flex flex-col gap-4">
