@@ -48,7 +48,7 @@ router.get('/', async (req: Request, res: Response) => {
     const where: Record<string, unknown> = {};
 
     if (search) {
-      where.name = { contains: String(search) };
+      where.name = { contains: String(search), mode: 'insensitive' };
     }
     if (categoryId) {
       where.categoryId = parseInt(String(categoryId));

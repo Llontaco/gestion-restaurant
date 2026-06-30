@@ -55,7 +55,10 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
+// En Vercel (serverless) NO se levanta un servidor: se exporta el `app` como handler.
+// Solo escuchamos un puerto en ejecución local / hosts tradicionales.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
   console.log(`\n🚀 Backend corriendo en: http://localhost:${PORT}`);
   console.log(`📦 API disponible en:    http://localhost:${PORT}/api`);
   console.log(`\nEndpoints disponibles:`);
@@ -72,6 +75,7 @@ app.listen(PORT, () => {
   console.log(`  POST   /api/orders`);
   console.log(`  PUT    /api/orders/:id/complete`);
   console.log(`  GET    /api/health\n`);
-});
+  });
+}
 
 export default app;
