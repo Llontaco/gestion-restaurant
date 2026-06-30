@@ -1,7 +1,7 @@
 # 📊 Informe de Resultados de Pruebas
 
 **Proyecto:** QUIOSKO Gestion Restaurant  
-**Versión evaluada:** 2.0.0  
+**Versión evaluada:** 4.0.0  
 **Fecha de ejecución:** 2026-06-30  
 **Responsable:** Equipo de QA  
 **Ambiente:** Desarrollo local (localhost)  
