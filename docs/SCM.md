@@ -1,8 +1,8 @@
 # 🗂️ Gestión de Configuración del Software (SCM)
-## QUIOSKO Gestion Restaurant — v2.0.0
+## QUIOSKO Gestion Restaurant — v4.0.0
 
 **Documento:** SCM-001  
-**Fecha de creación:** 2026-06-30  
+**Fecha de creación:** 2026-06-24  
 **Última actualización:** 2026-06-30  
 **Responsable:** Equipo de Desarrollo  
 
@@ -13,7 +13,7 @@
 | Campo | Valor |
 |---|---|
 | **Nombre del producto** | QUIOSKO Gestion Restaurant |
-| **Versión actual** | 2.0.0 |
+| **Versión actual** | 4.0.0 |
 | **Repositorio** | `Llontaco/gestion-restaurant` |
 | **Ruta local** | `g:\Programs\Proyectos\gestion-restaurant` |
 | **Tipo** | Full-Stack SPA + REST API |
