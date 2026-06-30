@@ -2,7 +2,7 @@
 ## QUIOSKO Gestion Restaurant — v4.0.0
 
 **Documento:** SCM-001  
-**Fecha de creación:** 2026-06-30  
+**Fecha de creación:** 2026-06-24  
 **Última actualización:** 2026-06-30  
 **Responsable:** Equipo de Desarrollo  
 
