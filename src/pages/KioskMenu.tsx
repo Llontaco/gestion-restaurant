@@ -1,9 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Logo from '../components/Logo';
+import Navbar from '../components/Navbar';
+import {
+  CartIcon,
+  BasketIcon,
+  LockIcon,
+  InfoIcon,
+  TruckIcon,
+  PlusIcon,
+  MinusIcon,
+  XIcon,
+  CategoryIcon,
+} from '../components/icons';
 import { getCategories, getProducts, createOrder } from '../services/api';
 import { getImagePath, formatCurrency } from '../utils';
 import type { Category, Product, CartItem } from '../services/api';
+
+const FREE_SHIPPING_THRESHOLD = 50;
 
 export default function KioskMenu() {
   const navigate = useNavigate();
@@ -53,7 +66,9 @@ export default function KioskMenu() {
     );
   }
 
-  const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const shipping = 0; // Envío gratis (promoción)
+  const total = subtotal + shipping;
 
   async function handleConfirm(e: React.FormEvent) {
     e.preventDefault();
@@ -68,147 +83,226 @@ export default function KioskMenu() {
   /* ── CONFIRMACIÓN ── */
   if (confirmed) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 gap-5 text-center p-6">
-        <Logo />
-        <p className="text-6xl">🎉</p>
-        <h1 className="text-4xl font-black text-gray-900">¡Pedido Confirmado!</h1>
-        <p className="text-lg text-gray-500">
-          Gracias <strong>{clientName}</strong>, tu pedido está siendo preparado.
-        </p>
-        <p className="text-2xl font-black text-amber-500">{formatCurrency(total)}</p>
-        <button
-          onClick={() => { setCart([]); setClientName(''); setConfirmed(false); }}
-          className="mt-2 bg-black text-white font-bold px-9 py-3 rounded uppercase"
-        >
-          Nuevo Pedido
-        </button>
-        <button onClick={() => navigate('/vistas')} className="text-gray-400 text-sm underline">
-          ← Volver al índice
-        </button>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500 text-lg">Cargando menú...</p>
+      <div className="min-h-screen flex flex-col bg-surface">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center gap-5 text-center p-6">
+          <div className="w-20 h-20 rounded-full bg-brand-light flex items-center justify-center">
+            <CartIcon className="w-10 h-10 text-brand" />
+          </div>
+          <h1 className="font-serif text-4xl font-bold text-gray-900">¡Pedido Confirmado!</h1>
+          <p className="text-lg text-gray-500">
+            Gracias <strong className="text-gray-900">{clientName}</strong>, tu pedido está siendo preparado.
+          </p>
+          <p className="font-serif text-3xl font-extrabold text-brand">{formatCurrency(total)}</p>
+          <button
+            onClick={() => { setCart([]); setClientName(''); setConfirmed(false); }}
+            className="mt-2 bg-gray-900 hover:bg-black text-white font-bold px-9 py-3 rounded-lg transition-colors"
+          >
+            Nuevo Pedido
+          </button>
+          <button onClick={() => navigate('/vistas')} className="text-gray-400 text-sm hover:text-gray-600">
+            ← Volver al índice
+          </button>
+        </div>
       </div>
     );
   }
 
   /* ── VISTA PRINCIPAL ── */
   return (
-    <div className="md:flex min-h-screen bg-gray-100">
+    <div className="min-h-screen flex flex-col bg-surface">
+      <Navbar />
 
-      {/* ── CATEGORÍAS ── */}
-      <aside className="md:w-72 md:h-screen bg-white border-r border-gray-200 flex-shrink-0">
-        <Logo />
-        <nav className="mt-10">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategoryId(cat.id)}
-              className={`${activeCategoryId === cat.id ? 'bg-amber-400' : ''} flex items-center gap-4 w-full border-t border-gray-200 p-3 last:border-b cursor-pointer hover:bg-amber-50 transition-colors`}
-            >
-              <span className="text-xl font-bold text-gray-900">{cat.name}</span>
-            </button>
-          ))}
-        </nav>
-      </aside>
+      <div className="flex-1 lg:flex">
 
-      {/* ── PRODUCTOS ── */}
-      <main className="md:flex-1 md:h-screen md:overflow-y-scroll p-5">
-        <h1 className="text-3xl font-black text-gray-900 mb-5">
-          Elige y personaliza tu pedido a continuación
-        </h1>
-        <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-4 gap-4 items-start">
-          {products.map((product) => (
-            <div key={product.id} className="border bg-white">
-              <div className="w-full h-48 overflow-hidden bg-amber-50 flex items-center justify-center">
-                {getImagePath(product.image) ? (
-                  <img
-                    src={getImagePath(product.image)}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-6xl">📦</span>
-                )}
-              </div>
-              <div className="p-5">
-                <h3 className="text-2xl font-bold text-gray-900">{product.name}</h3>
-                <p className="mt-5 font-black text-4xl text-amber-500">
-                  {formatCurrency(Number(product.price))}
+        {/* ── CATEGORÍAS ── */}
+        <aside className="lg:w-72 bg-white border-r border-gray-200 lg:h-[calc(100vh-5rem)] lg:sticky lg:top-20 flex flex-col flex-shrink-0">
+          <div className="flex-1 overflow-y-auto p-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4">Menú</p>
+            <nav className="space-y-1">
+              {categories.map((cat) => {
+                const active = activeCategoryId === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategoryId(cat.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors ${
+                      active
+                        ? 'bg-brand text-gray-900 font-bold shadow-sm'
+                        : 'text-gray-700 hover:bg-brand-light'
+                    }`}
+                  >
+                    <CategoryIcon name={cat.name} className="w-6 h-6 flex-shrink-0" />
+                    <span className="font-semibold">{cat.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Promoción envío gratis */}
+          <div className="p-5">
+            <div className="rounded-xl border border-gray-100 bg-surface p-4 flex items-center gap-3">
+              <TruckIcon className="w-9 h-9 text-brand flex-shrink-0" />
+              <div>
+                <p className="font-bold text-gray-900 text-sm">Envío gratis</p>
+                <p className="text-xs text-gray-500">
+                  Por compras mayores a{' '}
+                  <span className="text-brand font-semibold">{formatCurrency(FREE_SHIPPING_THRESHOLD)}</span>
                 </p>
-                <button
-                  onClick={() => addToCart(product)}
-                  className="bg-black text-white w-full mt-5 p-3 uppercase font-bold cursor-pointer hover:bg-gray-800 transition-colors"
-                >
-                  Agregar
-                </button>
               </div>
             </div>
-          ))}
-        </div>
-      </main>
-
-      {/* ── CARRITO ── */}
-      <aside className="md:w-72 lg:w-96 md:h-screen md:overflow-y-scroll p-5 bg-white border-l border-gray-200">
-        <h2 className="text-4xl font-black text-center text-gray-900">MIS PEDIDOS</h2>
-
-        {error && (
-          <div className="mt-4 bg-red-100 border border-red-300 text-red-800 rounded p-3 text-sm">
-            {error}
           </div>
-        )}
+        </aside>
 
-        {cart.length === 0 ? (
-          <p className="text-center text-gray-400 my-10">El pedido está vacío</p>
-        ) : (
-          <div className="mt-5">
-            {cart.map((item) => (
-              <div key={item.id} className="border-t border-gray-200 py-4">
-                <div className="flex justify-between items-start">
-                  <p className="font-bold text-gray-900">{item.name}</p>
-                  <button onClick={() => removeFromCart(item.id)} className="text-red-500 font-bold text-lg leading-none">✕</button>
+        {/* ── PRODUCTOS ── */}
+        <main className="flex-1 p-6 lg:p-8 lg:h-[calc(100vh-5rem)] lg:overflow-y-auto">
+          <div className="mb-6">
+            <h1 className="font-serif text-3xl md:text-4xl font-bold text-gray-900">
+              Elige y personaliza tu pedido
+            </h1>
+            <div className="w-16 h-1 bg-brand rounded-full mt-2 mb-3" />
+            <p className="text-gray-500">Selecciona los productos que deseas ordenar.</p>
+          </div>
+
+          {loading ? (
+            <p className="text-gray-500 mt-10">Cargando menú...</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
+                >
+                  <div className="h-44 bg-brand-light overflow-hidden flex items-center justify-center">
+                    {getImagePath(product.image) ? (
+                      <img
+                        src={getImagePath(product.image)}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <CartIcon className="w-12 h-12 text-brand/50" />
+                    )}
+                  </div>
+                  <div className="p-5 flex flex-col flex-1">
+                    <h3 className="font-serif text-xl font-bold text-gray-900">{product.name}</h3>
+                    <p className="font-serif text-2xl font-extrabold text-brand mt-2 mb-4">
+                      {formatCurrency(Number(product.price))}
+                    </p>
+                    <button
+                      onClick={() => addToCart(product)}
+                      className="mt-auto flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white font-semibold py-3 rounded-lg transition-colors"
+                    >
+                      <CartIcon className="w-5 h-5" />
+                      Agregar
+                    </button>
+                  </div>
                 </div>
-                <p className="text-amber-500 font-black text-xl mt-1">{formatCurrency(item.price)}</p>
-                <div className="flex gap-5 items-center bg-gray-100 px-6 py-2 rounded-lg w-fit mt-2">
-                  <button onClick={() => changeQty(item.id, -1)} className="font-bold text-xl text-gray-700">−</button>
-                  <span className="font-black">{item.quantity}</span>
-                  <button onClick={() => changeQty(item.id, 1)} className="font-bold text-xl text-gray-700">+</button>
-                </div>
-                <p className="text-sm font-bold text-gray-600 mt-2">
-                  Subtotal: <span className="font-normal">{formatCurrency(item.price * item.quantity)}</span>
-                </p>
+              ))}
+            </div>
+          )}
+        </main>
+
+        {/* ── MI PEDIDO ── */}
+        <aside className="lg:w-96 bg-white border-l border-gray-200 lg:h-[calc(100vh-5rem)] lg:sticky lg:top-20 flex flex-col flex-shrink-0">
+          <div className="p-6 border-b border-gray-100 flex items-center gap-3">
+            <CartIcon className="w-7 h-7 text-gray-900" />
+            <h2 className="font-serif text-2xl font-bold text-gray-900">Mi Pedido</h2>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6">
+            {error && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
+                {error}
               </div>
-            ))}
+            )}
 
-            <p className="text-2xl mt-10 text-center">
-              Total a pagar: <span className="font-bold">{formatCurrency(total)}</span>
-            </p>
+            {cart.length === 0 ? (
+              <div className="flex flex-col items-center text-center mt-10">
+                <div className="w-24 h-24 rounded-full bg-stone-100 flex items-center justify-center mb-5">
+                  <BasketIcon className="w-10 h-10 text-gray-400" />
+                </div>
+                <p className="font-serif text-xl font-bold text-gray-900">El pedido está vacío</p>
+                <p className="text-gray-500 mt-1 text-sm">Agrega productos para comenzar tu orden.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {cart.map((item) => (
+                  <div key={item.id} className="border-b border-gray-100 pb-4 last:border-b-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <p className="font-serif font-bold text-gray-900">{item.name}</p>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="text-gray-300 hover:text-red-500 transition-colors"
+                        aria-label="Quitar"
+                      >
+                        <XIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-brand font-bold mt-1">{formatCurrency(item.price)}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-3 bg-stone-100 rounded-lg px-3 py-1.5">
+                        <button onClick={() => changeQty(item.id, -1)} className="text-gray-600 hover:text-gray-900">
+                          <MinusIcon className="w-4 h-4" />
+                        </button>
+                        <span className="font-bold w-4 text-center">{item.quantity}</span>
+                        <button onClick={() => changeQty(item.id, 1)} className="text-gray-600 hover:text-gray-900">
+                          <PlusIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-700">
+                        {formatCurrency(item.price * item.quantity)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-            <form onSubmit={handleConfirm} className="w-full mt-10 space-y-5">
-              <input
-                type="text"
-                placeholder="Tu Nombre"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                required
-                className="bg-white border border-gray-200 p-2 w-full"
-              />
+          {/* Resumen + confirmar */}
+          <div className="border-t border-gray-100 p-6 space-y-4">
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Subtotal</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(subtotal)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="flex items-center gap-1 text-gray-500">
+                  Envío <InfoIcon className="w-4 h-4 text-gray-400" />
+                </span>
+                <span className="font-semibold text-gray-900">{formatCurrency(shipping)}</span>
+              </div>
+              <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
+                <span className="font-serif text-lg font-bold text-gray-900">Total</span>
+                <span className="font-serif text-lg font-extrabold text-brand">{formatCurrency(total)}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirm} className="space-y-3">
+              {cart.length > 0 && (
+                <input
+                  type="text"
+                  placeholder="Tu nombre"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  required
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                />
+              )}
               <button
                 type="submit"
-                disabled={submitting}
-                className="py-2 rounded uppercase text-white bg-black w-full font-bold cursor-pointer disabled:bg-gray-400"
+                disabled={submitting || cart.length === 0}
+                className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:hover:bg-brand text-white font-bold py-3.5 rounded-lg transition-colors"
               >
+                <LockIcon className="w-4 h-4" />
                 {submitting ? 'Enviando...' : 'Confirmar Pedido'}
               </button>
             </form>
           </div>
-        )}
-      </aside>
+        </aside>
+      </div>
     </div>
   );
 }

@@ -208,3 +208,43 @@ export async function completeOrder(
     return { error: (e as Error).message };
   }
 }
+
+// ─── Autenticación ──────────────────────────────────────────────────────────────
+export type AuthUser = {
+  id: number;
+  name: string;
+  email: string;
+};
+
+export async function registerUser(
+  name: string,
+  email: string,
+  password: string
+): Promise<{ user: AuthUser | null; error: string | null }> {
+  try {
+    const user = await request<AuthUser>('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password }),
+    });
+    return { user, error: null };
+  } catch (e) {
+    return { user: null, error: (e as Error).message };
+  }
+}
+
+export async function loginUser(
+  email: string,
+  password: string
+): Promise<{ user: AuthUser | null; error: string | null }> {
+  try {
+    const user = await request<AuthUser>('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    return { user, error: null };
+  } catch (e) {
+    return { user: null, error: (e as Error).message };
+  }
+}
