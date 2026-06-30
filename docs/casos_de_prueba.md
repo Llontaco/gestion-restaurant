@@ -1,7 +1,7 @@
 # 📋 Casos de Prueba — QUIOSKO Gestion Restaurant
 
 **Proyecto:** QUIOSKO Gestion Restaurant  
-**Versión:** 2.0.0  
+**Versión:** 4.0.0  
 **Fecha:** 2026-06-30  
 **Autor:** Equipo de Calidad  
 **Stack:** React 18 + Vite 5 + TypeScript + Express 4 + Prisma 5 + MySQL  
