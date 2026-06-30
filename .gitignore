@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Build output
+dist/
+backend/dist/
+*.tsbuildinfo
+
+# Environment variables (¡nunca subir credenciales!)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Uploads en runtime
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs / sistema
+*.log
+.DS_Store
+
+# Vercel
+.vercel

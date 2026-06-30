@@ -13,8 +13,26 @@ const PORT = process.env.PORT || 3001;
 const uploadsDir = process.env.UPLOADS_DIR || 'uploads';
 
 // ─── Middlewares ──────────────────────────────────────────────────────────────
+// Orígenes permitidos: localhost (dev) + FRONTEND_URL (prod) + cualquier *.vercel.app
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL,
+].filter(Boolean) as string[];
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: (origin, cb) => {
+    // Permite herramientas sin origin (curl, health checks)
+    if (!origin) return cb(null, true);
+    let isVercel = false;
+    try {
+      isVercel = new URL(origin).hostname.endsWith('.vercel.app');
+    } catch {
+      isVercel = false;
+    }
+    if (allowedOrigins.includes(origin) || isVercel) return cb(null, true);
+    return cb(new Error(`Origen no permitido por CORS: ${origin}`));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
