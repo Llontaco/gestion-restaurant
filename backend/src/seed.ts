@@ -16,19 +16,20 @@ const categories = [
   { id: 6, name: 'Galletas',    icon: '🍪' },
 ];
 
+// Precios en Soles peruanos (S/), realistas para un quiosco/cafetería
 const products = [
-  { id: 1,  name: 'Hamburguesa Clásica',  price: 85,  image: '/products/hamburguesas_01.jpg', categoryId: 1 },
-  { id: 2,  name: 'Hamburguesa BBQ',      price: 110, image: '/products/hamburguesas_02.jpg', categoryId: 1 },
-  { id: 3,  name: 'Doble Queso',          price: 125, image: '/products/hamburguesas_03.jpg', categoryId: 1 },
-  { id: 4,  name: 'Hamburguesa Jalapeño', price: 100, image: '/products/hamburguesas_04.jpg', categoryId: 1 },
-  { id: 5,  name: 'Café Americano',       price: 35,  image: '/products/cafe_01.jpg',         categoryId: 2 },
-  { id: 6,  name: 'Café Latte',           price: 50,  image: '/products/cafe_02.jpg',         categoryId: 2 },
-  { id: 7,  name: 'Capuccino',            price: 55,  image: '/products/cafe_03.jpg',         categoryId: 2 },
-  { id: 8,  name: 'Pizza Margarita',      price: 120, image: '/products/pizzas_01.jpg',       categoryId: 3 },
-  { id: 9,  name: 'Dona Glaseada',        price: 30,  image: '/products/donas_01.jpg',        categoryId: 4 },
-  { id: 10, name: 'Pastel de Chocolate',  price: 75,  image: '/products/pastel_01.jpg',       categoryId: 5 },
-  { id: 11, name: 'Galletas de Avena',    price: 25,  image: '/products/galletas_01.jpg',     categoryId: 6 },
-  { id: 15, name: 'te rojo',              price: 5,   image: 'uploads/1780880721672-945877817.webp', categoryId: 2 },
+  { id: 1,  name: 'Hamburguesa Clásica',  price: 12.90, image: '/products/hamburguesas_01.jpg', categoryId: 1 },
+  { id: 2,  name: 'Hamburguesa BBQ',      price: 16.90, image: '/products/hamburguesas_02.jpg', categoryId: 1 },
+  { id: 3,  name: 'Doble Queso',          price: 18.90, image: '/products/hamburguesas_03.jpg', categoryId: 1 },
+  { id: 4,  name: 'Hamburguesa Jalapeño', price: 15.90, image: '/products/hamburguesas_04.jpg', categoryId: 1 },
+  { id: 5,  name: 'Café Americano',       price: 6.50,  image: '/products/cafe_01.jpg',         categoryId: 2 },
+  { id: 6,  name: 'Café Latte',           price: 9.00,  image: '/products/cafe_02.jpg',         categoryId: 2 },
+  { id: 7,  name: 'Capuccino',            price: 9.50,  image: '/products/cafe_03.jpg',         categoryId: 2 },
+  { id: 8,  name: 'Pizza Margarita',      price: 21.90, image: '/products/pizzas_01.jpg',       categoryId: 3 },
+  { id: 9,  name: 'Dona Glaseada',        price: 4.50,  image: '/products/donas_01.jpg',        categoryId: 4 },
+  { id: 10, name: 'Pastel de Chocolate',  price: 8.90,  image: '/products/pastel_01.jpg',       categoryId: 5 },
+  { id: 11, name: 'Galletas de Avena',    price: 4.00,  image: '/products/galletas_01.jpg',     categoryId: 6 },
+  { id: 15, name: 'te rojo',              price: 5.00,  image: 'uploads/1780880721672-945877817.webp', categoryId: 2 },
 ];
 
 const orders = [

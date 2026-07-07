@@ -15,12 +15,14 @@ import {
 } from '../components/icons';
 import { getCategories, getProducts, createOrder } from '../services/api';
 import { getImagePath, formatCurrency } from '../utils';
+import { useAuth } from '../context/AuthContext';
 import type { Category, Product, CartItem } from '../services/api';
 
-const FREE_SHIPPING_THRESHOLD = 50;
+const FREE_SHIPPING_THRESHOLD = 30;
 
 export default function KioskMenu() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
@@ -30,6 +32,8 @@ export default function KioskMenu() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Feedback visual al agregar un producto (id del último agregado)
+  const [addedId, setAddedId] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -55,6 +59,9 @@ export default function KioskMenu() {
       if (existing) return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
       return [...prev, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
     });
+    // Resalta el botón un instante como confirmación
+    setAddedId(product.id);
+    window.setTimeout(() => setAddedId((cur) => (cur === product.id ? null : cur)), 900);
   }
 
   function removeFromCart(id: number) {
@@ -76,7 +83,7 @@ export default function KioskMenu() {
     if (!clientName.trim() || cart.length === 0) return;
     setSubmitting(true);
     setError(null);
-    const { error: err } = await createOrder(clientName, total, cart);
+    const { error: err } = await createOrder(clientName, total, cart, user?.id);
     if (err) { setError(err); setSubmitting(false); }
     else { setConfirmed(true); setSubmitting(false); }
   }
@@ -193,10 +200,14 @@ export default function KioskMenu() {
                     </p>
                     <button
                       onClick={() => addToCart(product)}
-                      className="mt-auto flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white font-semibold py-3 rounded-lg transition-colors"
+                      className={`mt-auto flex items-center justify-center gap-2 font-bold py-3 rounded-lg transition-all duration-150 active:scale-95 ${
+                        addedId === product.id
+                          ? 'bg-green-600 text-white shadow-md ring-2 ring-green-300'
+                          : 'bg-brand hover:bg-brand-dark text-white shadow-sm hover:shadow-md hover:-translate-y-0.5'
+                      }`}
                     >
                       <CartIcon className="w-5 h-5" />
-                      Agregar
+                      {addedId === product.id ? '✓ Agregado' : 'Agregar'}
                     </button>
                   </div>
                 </div>

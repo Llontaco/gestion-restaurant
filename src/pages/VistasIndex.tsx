@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import BrandLogo from '../components/BrandLogo';
-import { StoreIcon, ClipboardIcon, TagIcon, LogoutIcon } from '../components/icons';
+import { StoreIcon, ClipboardIcon, TagIcon, LogoutIcon, BasketIcon } from '../components/icons';
 import { useAuth } from '../context/AuthContext';
 
 type AccessPoint = {
@@ -19,6 +19,12 @@ const ACCESS_POINTS: AccessPoint[] = [
     desc: 'Elige y pide tus productos',
     icon: StoreIcon,
     accent: true,
+  },
+  {
+    to: '/vistas/my-orders',
+    label: 'Mis Pedidos',
+    desc: 'Sigue el estado de tus pedidos',
+    icon: BasketIcon,
   },
   {
     to: '/vistas/orders-ready',

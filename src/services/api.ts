@@ -35,6 +35,8 @@ export type Order = {
   total: number;
   status: boolean;
   orderReadyAt: string | null;
+  finalizedAt: string | null;
+  userId: number | null;
   createdAt: string;
   orderItems: OrderProductItem[];
 };
@@ -163,17 +165,40 @@ export async function deleteProduct(
 export async function createOrder(
   name: string,
   total: number,
-  order: CartItem[]
+  order: CartItem[],
+  userId?: number
 ): Promise<{ order: Order | null; error: string | null }> {
   try {
     const newOrder = await request<Order>('/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, total, order }),
+      body: JSON.stringify({ name, total, order, userId }),
     });
     return { order: newOrder, error: null };
   } catch (e) {
     return { order: null, error: (e as Error).message };
+  }
+}
+
+// ─── getMyOrders ──────────────────────────────────────────────────────────────
+export async function getMyOrders(
+  userId: number
+): Promise<{ orders: Order[]; error: string | null }> {
+  try {
+    const orders = await request<Order[]>(`/orders/mine?userId=${userId}`);
+    return { orders, error: null };
+  } catch (e) {
+    return { orders: [], error: (e as Error).message };
+  }
+}
+
+// ─── finalizeOrder ────────────────────────────────────────────────────────────
+export async function finalizeOrder(id: number): Promise<{ error: string | null }> {
+  try {
+    await request(`/orders/${id}/finalize`, { method: 'PUT' });
+    return { error: null };
+  } catch (e) {
+    return { error: (e as Error).message };
   }
 }
 

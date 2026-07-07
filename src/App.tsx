@@ -11,6 +11,7 @@ import AdminProducts from './pages/AdminProducts'
 import AdminNewProduct from './pages/AdminNewProduct'
 import AdminEditProduct from './pages/AdminEditProduct'
 import AdminCategories from './pages/AdminCategories'
+import MyOrders from './pages/MyOrders'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/vistas" replace />} />
         <Route path="/vistas" element={<VistasIndex />} />
         <Route path="/vistas/kiosk" element={<KioskMenu />} />
+        <Route path="/vistas/my-orders" element={<MyOrders />} />
         <Route path="/vistas/orders-ready" element={<OrdersReady />} />
 
         {/* Solo ADMIN */}

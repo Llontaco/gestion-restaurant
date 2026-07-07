@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
 import { useAuth } from '../context/AuthContext';
-import { ClipboardIcon, StoreIcon, LogoutIcon } from './icons';
+import { ClipboardIcon, StoreIcon, LogoutIcon, BasketIcon } from './icons';
 
 function tabClass(active: boolean) {
   return `flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors ${
@@ -15,6 +15,7 @@ export default function Navbar() {
   const { user, isAdmin, logout } = useAuth();
   const onAdminRoute = pathname.startsWith('/vistas/admin');
   const isKiosk = pathname.startsWith('/vistas/kiosk');
+  const isMyOrders = pathname.startsWith('/vistas/my-orders');
 
   function handleLogout() {
     logout();
@@ -24,11 +25,15 @@ export default function Navbar() {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
-        {/* Marca */}
-        <div className="flex items-center gap-4">
+        {/* Marca (click → volver al quiosco) */}
+        <Link
+          to="/vistas/kiosk"
+          className="flex items-center gap-4 hover:opacity-80 transition-opacity"
+          title="Ir al quiosco"
+        >
           <BrandLogo />
           <span className="hidden lg:block font-serif text-2xl font-bold text-gray-900">Quiosco</span>
-        </div>
+        </Link>
 
         {/* Navegación de módulos */}
         <nav className="flex items-center gap-1.5">
@@ -41,6 +46,10 @@ export default function Navbar() {
           <Link to="/vistas/kiosk" className={tabClass(isKiosk)}>
             <StoreIcon className="w-5 h-5" />
             <span className="hidden sm:inline">Quiosco</span>
+          </Link>
+          <Link to="/vistas/my-orders" className={tabClass(isMyOrders)}>
+            <BasketIcon className="w-5 h-5" />
+            <span className="hidden sm:inline">Mis Pedidos</span>
           </Link>
         </nav>
 

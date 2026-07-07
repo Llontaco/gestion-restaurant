@@ -44,6 +44,10 @@ model Order {
   total        Decimal        @db.Decimal(10, 2)
   status       Boolean        @default(false)
   orderReadyAt DateTime?
+  // Cuándo el admin marcó la orden como entregada (sale del display "Órdenes Listas")
+  finalizedAt  DateTime?
+  // Cliente que hizo el pedido (null en órdenes antiguas / anónimas)
+  userId       Int?
   createdAt    DateTime       @default(now())
   orderItems   OrderProduct[]
 

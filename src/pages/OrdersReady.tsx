@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import Navbar from '../components/Navbar';
 import AdminTabs from '../components/AdminTabs';
-import { getReadyOrders } from '../services/api';
+import { getReadyOrders, finalizeOrder } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import type { Order } from '../services/api';
 
 export default function OrdersReady() {
+  const { isAdmin } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [finalizing, setFinalizing] = useState<number | null>(null);
 
   const fetchOrders = useCallback(async () => {
     const { orders: data } = await getReadyOrders();
@@ -20,10 +23,17 @@ export default function OrdersReady() {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
+  async function handleFinalize(id: number) {
+    setFinalizing(id);
+    await finalizeOrder(id);
+    setOrders((prev) => prev.filter((o) => o.id !== id));
+    setFinalizing(null);
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-surface">
       <Navbar />
-      <AdminTabs />
+      {isAdmin && <AdminTabs />}
 
       <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-10">
         <div className="text-center mb-10">
@@ -48,6 +58,15 @@ export default function OrdersReady() {
                     </li>
                   ))}
                 </ul>
+                {isAdmin && (
+                  <button
+                    onClick={() => handleFinalize(order.id)}
+                    disabled={finalizing === order.id}
+                    className="w-full bg-gray-900 hover:bg-black disabled:opacity-50 text-white py-2.5 rounded-lg font-semibold transition-colors"
+                  >
+                    {finalizing === order.id ? 'Finalizando...' : 'Marcar como entregada'}
+                  </button>
+                )}
               </div>
             ))}
           </div>

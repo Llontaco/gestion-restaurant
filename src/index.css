@@ -21,3 +21,12 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* La UI se diseñó con el escalado de Windows al 125%; compensamos para que al
+   100% se vea con las proporciones correctas. Solo en escritorio: en móviles
+   (iPhone, etc.) el tamaño natural ya es el adecuado. */
+@media (min-width: 1024px) {
+  html {
+    zoom: 0.8;
+  }
+}
