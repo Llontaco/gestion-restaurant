@@ -139,15 +139,20 @@ export default function DeliveryMapPicker({ onSelect }: Props) {
         Toca el mapa para marcar dónde entregaremos tu pedido. Puedes arrastrar el marcador.
       </p>
 
-      <div
-        ref={mapDivRef}
-        className="w-full h-52 rounded-xl border border-gray-200 bg-stone-100"
-      >
+      {/* El div del mapa es EXCLUSIVO de Google Maps (React no debe renderizar
+          hijos dentro, o chocan al manipular el DOM). Los mensajes van como
+          capas hermanas superpuestas. */}
+      <div className="relative w-full h-52 rounded-xl border border-gray-200 bg-stone-100 overflow-hidden">
+        <div ref={mapDivRef} className="absolute inset-0" />
         {status === 'loading' && (
-          <p className="text-center text-sm text-gray-400 pt-20">Cargando mapa...</p>
+          <p className="absolute inset-0 flex items-center justify-center text-sm text-gray-400 pointer-events-none">
+            Cargando mapa...
+          </p>
         )}
         {status === 'error' && (
-          <p className="text-center text-sm text-red-500 pt-20">No se pudo cargar el mapa.</p>
+          <p className="absolute inset-0 flex items-center justify-center text-sm text-red-500">
+            No se pudo cargar el mapa.
+          </p>
         )}
       </div>
 
