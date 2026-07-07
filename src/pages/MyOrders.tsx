@@ -78,6 +78,12 @@ export default function MyOrders() {
                     </span>
                   </div>
 
+                  <p className="text-xs text-gray-500 mb-2">
+                    {order.deliveryType === 'DELIVERY'
+                      ? `🛵 Delivery a: ${order.deliveryAddress ?? ''} (${order.distanceKm} km · ${formatCurrency(Number(order.deliveryFee))})`
+                      : '🏪 Recojo en local'}
+                  </p>
+
                   <ul className="divide-y divide-gray-100 border-t border-gray-100">
                     {order.orderItems.map((item) => (
                       <li key={item.id} className="flex items-center justify-between py-2.5 text-sm">

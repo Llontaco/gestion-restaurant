@@ -29,6 +29,15 @@ export type OrderProductItem = {
   product: Product;
 };
 
+export type DeliveryInfo = {
+  type: 'PICKUP' | 'DELIVERY';
+  address?: string;
+  lat?: number;
+  lng?: number;
+  distanceKm?: number;
+  fee?: number;
+};
+
 export type Order = {
   id: number;
   name: string;
@@ -37,6 +46,12 @@ export type Order = {
   orderReadyAt: string | null;
   finalizedAt: string | null;
   userId: number | null;
+  deliveryType: 'PICKUP' | 'DELIVERY';
+  deliveryAddress: string | null;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
+  distanceKm: number | null;
+  deliveryFee: number;
   createdAt: string;
   orderItems: OrderProductItem[];
 };
@@ -166,13 +181,14 @@ export async function createOrder(
   name: string,
   total: number,
   order: CartItem[],
-  userId?: number
+  userId?: number,
+  delivery?: DeliveryInfo
 ): Promise<{ order: Order | null; error: string | null }> {
   try {
     const newOrder = await request<Order>('/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, total, order, userId }),
+      body: JSON.stringify({ name, total, order, userId, delivery }),
     });
     return { order: newOrder, error: null };
   } catch (e) {

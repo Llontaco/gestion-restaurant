@@ -66,10 +66,16 @@ router.get('/mine', async (req: Request, res: Response) => {
 // POST /api/orders — crear nueva orden
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, total, order, userId } = req.body;
+    const { name, total, order, userId, delivery } = req.body;
 
     if (!name || !total || !order || !Array.isArray(order) || order.length === 0) {
       return res.status(400).json({ error: 'name, total y order son requeridos' });
+    }
+
+    // Datos de entrega (opcionales; por defecto recojo en local)
+    const isDelivery = delivery && delivery.type === 'DELIVERY';
+    if (isDelivery && (!delivery.address || delivery.lat == null || delivery.lng == null)) {
+      return res.status(400).json({ error: 'El delivery requiere dirección y ubicación' });
     }
 
     const newOrder = await prisma.order.create({
@@ -77,6 +83,12 @@ router.post('/', async (req: Request, res: Response) => {
         name: String(name),
         total: parseFloat(total),
         userId: userId ? parseInt(userId) : null,
+        deliveryType: isDelivery ? 'DELIVERY' : 'PICKUP',
+        deliveryAddress: isDelivery ? String(delivery.address).slice(0, 300) : null,
+        deliveryLat: isDelivery ? parseFloat(delivery.lat) : null,
+        deliveryLng: isDelivery ? parseFloat(delivery.lng) : null,
+        distanceKm: isDelivery ? parseFloat(delivery.distanceKm) : null,
+        deliveryFee: isDelivery ? parseFloat(delivery.fee) : 0,
         orderItems: {
           create: order.map((item: { id: number; quantity: number }) => ({
             productId: item.id,

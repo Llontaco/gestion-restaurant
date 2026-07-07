@@ -48,6 +48,15 @@ model Order {
   finalizedAt  DateTime?
   // Cliente que hizo el pedido (null en órdenes antiguas / anónimas)
   userId       Int?
+  // ─── Entrega ───
+  // "PICKUP" (recojo en local) o "DELIVERY" (envío a domicilio)
+  deliveryType    String   @default("PICKUP") @db.VarChar(10)
+  deliveryAddress String?  @db.VarChar(300)
+  deliveryLat     Float?
+  deliveryLng     Float?
+  // Distancia estimada desde el local (km) y cargo por delivery (S/)
+  distanceKm      Float?
+  deliveryFee     Decimal  @default(0) @db.Decimal(10, 2)
   createdAt    DateTime       @default(now())
   orderItems   OrderProduct[]
 
