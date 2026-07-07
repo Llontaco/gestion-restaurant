@@ -23,10 +23,12 @@ body {
 }
 
 /* Al 100% de escalado la UI se veía muy pequeña (estaba pensada para 125%).
-   La ampliamos 1.25x para que se vea normal sin tener que subir el escalado
-   de Windows. Solo en escritorio: en móviles el tamaño natural es el adecuado. */
+   Escalamos vía font-size raíz (todo el diseño usa rem): agranda texto,
+   espaciados y componentes 25% pero respeta el alto/ancho real del viewport
+   (100vh sigue siendo la pantalla completa → sin scroll extra y el navbar
+   se estira a todo el ancho). Solo escritorio. */
 @media (min-width: 1024px) {
   html {
-    zoom: 1.25;
+    font-size: 125%;
   }
 }
