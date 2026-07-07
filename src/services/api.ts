@@ -209,6 +209,28 @@ export async function completeOrder(
   }
 }
 
+// ─── Chatbot ──────────────────────────────────────────────────────────────────
+export type ChatMessage = {
+  role: 'user' | 'model';
+  text: string;
+};
+
+export async function sendChatMessage(
+  message: string,
+  history: ChatMessage[] = []
+): Promise<{ reply: string | null; error: string | null }> {
+  try {
+    const data = await request<{ reply: string }>('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history }),
+    });
+    return { reply: data.reply, error: null };
+  } catch (e) {
+    return { reply: null, error: (e as Error).message };
+  }
+}
+
 // ─── Autenticación ──────────────────────────────────────────────────────────────
 export type AuthUser = {
   id: number;

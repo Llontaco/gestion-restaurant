@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import ChatWidget from '../components/ChatWidget';
 import {
   CartIcon,
   BasketIcon,
@@ -303,6 +304,8 @@ export default function KioskMenu() {
           </div>
         </aside>
       </div>
+
+      <ChatWidget />
     </div>
   );
 }

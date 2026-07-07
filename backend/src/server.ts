@@ -7,6 +7,7 @@ import categoriesRouter from './routes/categories';
 import productsRouter from './routes/products';
 import ordersRouter from './routes/orders';
 import authRouter from './routes/auth';
+import chatRouter from './routes/chat';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,6 +49,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/orders', ordersRouter);
+app.use('/api/chat', chatRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -74,6 +76,7 @@ if (!process.env.VERCEL) {
   console.log(`  GET    /api/orders/ready`);
   console.log(`  POST   /api/orders`);
   console.log(`  PUT    /api/orders/:id/complete`);
+  console.log(`  POST   /api/chat`);
   console.log(`  GET    /api/health\n`);
   });
 }
