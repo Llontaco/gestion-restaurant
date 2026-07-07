@@ -21,3 +21,14 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Al 100% de escalado la UI se veía muy pequeña (estaba pensada para 125%).
+   Escalamos vía font-size raíz (todo el diseño usa rem): agranda texto,
+   espaciados y componentes 25% pero respeta el alto/ancho real del viewport
+   (100vh sigue siendo la pantalla completa → sin scroll extra y el navbar
+   se estira a todo el ancho). Solo escritorio. */
+@media (min-width: 1024px) {
+  html {
+    font-size: 125%;
+  }
+}

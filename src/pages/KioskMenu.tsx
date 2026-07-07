@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import ChatWidget from '../components/ChatWidget';
 import {
   CartIcon,
   BasketIcon,
@@ -12,14 +13,16 @@ import {
   XIcon,
   CategoryIcon,
 } from '../components/icons';
-import { getCategories, getProducts, createOrder } from '../services/api';
+import { getCategories, getProducts, createPaymentPreference, confirmPayment } from '../services/api';
 import { getImagePath, formatCurrency } from '../utils';
+import { useAuth } from '../context/AuthContext';
+import DeliveryMapPicker, { RATE_PER_KM, MAX_DELIVERY_KM } from '../components/DeliveryMapPicker';
+import type { DeliverySelection } from '../components/DeliveryMapPicker';
 import type { Category, Product, CartItem } from '../services/api';
-
-const FREE_SHIPPING_THRESHOLD = 50;
 
 export default function KioskMenu() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<number | null>(null);
@@ -29,6 +32,16 @@ export default function KioskMenu() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Feedback visual al agregar un producto (id del último agregado)
+  const [addedId, setAddedId] = useState<number | null>(null);
+  // ─── Entrega: recojo en local o delivery ───
+  const [deliveryMode, setDeliveryMode] = useState<'PICKUP' | 'DELIVERY'>('PICKUP');
+  const [deliverySel, setDeliverySel] = useState<DeliverySelection | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [feeAccepted, setFeeAccepted] = useState(false);
+  // ─── Pago (Mercado Pago) ───
+  const [paidTotal, setPaidTotal] = useState<number | null>(null); // total del pedido ya pagado
+  const [confirmingPay, setConfirmingPay] = useState(false);       // verificando pago al volver de MP
 
   useEffect(() => {
     async function load() {
@@ -43,6 +56,57 @@ export default function KioskMenu() {
     load();
   }, []);
 
+  // ─── Retorno desde Mercado Pago ───
+  // MP nos devuelve a /vistas/kiosk?mp=success|failure|pending&payment_id=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mp = params.get('mp');
+    if (!mp) return;
+
+    // Limpia la URL (evita re-procesar al refrescar)
+    window.history.replaceState({}, '', window.location.pathname);
+
+    const restoreCheckout = () => {
+      try {
+        const raw = localStorage.getItem('fc_pending_checkout');
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        setCart(saved.cart ?? []);
+        setClientName(saved.clientName ?? '');
+        setDeliveryMode(saved.deliveryMode ?? 'PICKUP');
+        setDeliverySel(saved.deliverySel ?? null);
+        setDeliveryAddress(saved.deliveryAddress ?? '');
+        setFeeAccepted(false);
+      } catch { /* carrito no recuperable */ }
+    };
+
+    if (mp === 'success') {
+      const paymentId = params.get('payment_id') || params.get('collection_id');
+      if (!paymentId) { restoreCheckout(); setError('No se recibió el pago. Intenta de nuevo.'); return; }
+      setConfirmingPay(true);
+      confirmPayment(paymentId).then(({ order, error: err }) => {
+        setConfirmingPay(false);
+        if (order) {
+          localStorage.removeItem('fc_pending_checkout');
+          setClientName(order.name);
+          setPaidTotal(Number(order.total));
+          setConfirmed(true);
+        } else {
+          restoreCheckout();
+          setError(err ?? 'No se pudo verificar el pago. Si te cobraron, contáctanos.');
+        }
+      });
+    } else {
+      // failure o pending: restauramos el carrito para que pueda reintentar
+      restoreCheckout();
+      setError(
+        mp === 'pending'
+          ? 'Tu pago quedó pendiente. Cuando se apruebe, tu pedido aparecerá en "Mis Pedidos".'
+          : 'El pago no se completó. Puedes intentarlo de nuevo.'
+      );
+    }
+  }, []);
+
   useEffect(() => {
     if (!activeCategoryId) return;
     getProducts(undefined, activeCategoryId, 1, 50).then(({ products: prods }) => setProducts(prods));
@@ -54,6 +118,9 @@ export default function KioskMenu() {
       if (existing) return prev.map((i) => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
       return [...prev, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
     });
+    // Resalta el botón un instante como confirmación
+    setAddedId(product.id);
+    window.setTimeout(() => setAddedId((cur) => (cur === product.id ? null : cur)), 900);
   }
 
   function removeFromCart(id: number) {
@@ -67,17 +134,66 @@ export default function KioskMenu() {
   }
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const shipping = 0; // Envío gratis (promoción)
+  const isDelivery = deliveryMode === 'DELIVERY';
+  const shipping = isDelivery && deliverySel ? deliverySel.fee : 0;
   const total = subtotal + shipping;
+
+  // Para confirmar un delivery hace falta: ubicación en el mapa, dirección y aceptar el cargo
+  const deliveryIncomplete =
+    isDelivery && (!deliverySel || !deliveryAddress.trim() || !feeAccepted);
 
   async function handleConfirm(e: React.FormEvent) {
     e.preventDefault();
-    if (!clientName.trim() || cart.length === 0) return;
+    if (!clientName.trim() || cart.length === 0 || deliveryIncomplete) return;
     setSubmitting(true);
     setError(null);
-    const { error: err } = await createOrder(clientName, total, cart);
-    if (err) { setError(err); setSubmitting(false); }
-    else { setConfirmed(true); setSubmitting(false); }
+
+    const delivery = isDelivery && deliverySel
+      ? {
+          type: 'DELIVERY' as const,
+          address: deliveryAddress.trim(),
+          lat: deliverySel.lat,
+          lng: deliverySel.lng,
+          distanceKm: deliverySel.distanceKm,
+          fee: deliverySel.fee,
+        }
+      : { type: 'PICKUP' as const };
+
+    // Guardamos el checkout por si el pago falla y hay que reintentarlo
+    localStorage.setItem(
+      'fc_pending_checkout',
+      JSON.stringify({ cart, clientName, deliveryMode, deliverySel, deliveryAddress })
+    );
+
+    // Creamos la preferencia de pago y redirigimos a Mercado Pago.
+    // La orden se registra recién cuando el pago esté aprobado.
+    const { initPoint, error: err } = await createPaymentPreference({
+      name: clientName,
+      userId: user?.id,
+      order: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
+      delivery,
+    });
+
+    if (err || !initPoint) {
+      setError(err ?? 'No se pudo iniciar el pago');
+      setSubmitting(false);
+      return;
+    }
+    window.location.href = initPoint;
+  }
+
+  /* ── VERIFICANDO PAGO (retorno de Mercado Pago) ── */
+  if (confirmingPay) {
+    return (
+      <div className="min-h-screen flex flex-col bg-surface">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-6">
+          <div className="w-16 h-16 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+          <h1 className="font-serif text-2xl font-bold text-gray-900">Verificando tu pago...</h1>
+          <p className="text-gray-500 text-sm">Un momento, estamos confirmando con Mercado Pago.</p>
+        </div>
+      </div>
+    );
   }
 
   /* ── CONFIRMACIÓN ── */
@@ -89,13 +205,16 @@ export default function KioskMenu() {
           <div className="w-20 h-20 rounded-full bg-brand-light flex items-center justify-center">
             <CartIcon className="w-10 h-10 text-brand" />
           </div>
-          <h1 className="font-serif text-4xl font-bold text-gray-900">¡Pedido Confirmado!</h1>
+          <h1 className="font-serif text-4xl font-bold text-gray-900">¡Pedido Realizado!</h1>
           <p className="text-lg text-gray-500">
-            Gracias <strong className="text-gray-900">{clientName}</strong>, tu pedido está siendo preparado.
+            Gracias <strong className="text-gray-900">{clientName}</strong>, tu pago fue aprobado y
+            tu pedido está siendo preparado.
           </p>
-          <p className="font-serif text-3xl font-extrabold text-brand">{formatCurrency(total)}</p>
+          <p className="font-serif text-3xl font-extrabold text-brand">
+            {formatCurrency(paidTotal ?? total)}
+          </p>
           <button
-            onClick={() => { setCart([]); setClientName(''); setConfirmed(false); }}
+            onClick={() => { setCart([]); setClientName(''); setConfirmed(false); setPaidTotal(null); }}
             className="mt-2 bg-gray-900 hover:bg-black text-white font-bold px-9 py-3 rounded-lg transition-colors"
           >
             Nuevo Pedido
@@ -140,15 +259,15 @@ export default function KioskMenu() {
             </nav>
           </div>
 
-          {/* Promoción envío gratis */}
+          {/* Info de delivery */}
           <div className="p-5">
             <div className="rounded-xl border border-gray-100 bg-surface p-4 flex items-center gap-3">
               <TruckIcon className="w-9 h-9 text-brand flex-shrink-0" />
               <div>
-                <p className="font-bold text-gray-900 text-sm">Envío gratis</p>
+                <p className="font-bold text-gray-900 text-sm">Delivery disponible</p>
                 <p className="text-xs text-gray-500">
-                  Por compras mayores a{' '}
-                  <span className="text-brand font-semibold">{formatCurrency(FREE_SHIPPING_THRESHOLD)}</span>
+                  <span className="text-brand font-semibold">{formatCurrency(RATE_PER_KM)}</span> por km
+                  · hasta {MAX_DELIVERY_KM} km del local
                 </p>
               </div>
             </div>
@@ -192,10 +311,14 @@ export default function KioskMenu() {
                     </p>
                     <button
                       onClick={() => addToCart(product)}
-                      className="mt-auto flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white font-semibold py-3 rounded-lg transition-colors"
+                      className={`mt-auto flex items-center justify-center gap-2 font-bold py-3 rounded-lg transition-all duration-150 active:scale-95 ${
+                        addedId === product.id
+                          ? 'bg-green-600 text-white shadow-md ring-2 ring-green-300'
+                          : 'bg-brand hover:bg-brand-dark text-white shadow-sm hover:shadow-md hover:-translate-y-0.5'
+                      }`}
                     >
                       <CartIcon className="w-5 h-5" />
-                      Agregar
+                      {addedId === product.id ? '✓ Agregado' : 'Agregar'}
                     </button>
                   </div>
                 </div>
@@ -259,6 +382,84 @@ export default function KioskMenu() {
                 ))}
               </div>
             )}
+
+            {/* ── ENTREGA: recojo en local o delivery ── */}
+            {cart.length > 0 && (
+              <div className="mt-6 pt-5 border-t border-gray-100 space-y-3">
+                <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                  ¿Cómo quieres recibir tu pedido?
+                </p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMode('PICKUP')}
+                    className={`rounded-xl border-2 p-3 text-center transition-colors ${
+                      !isDelivery
+                        ? 'border-brand bg-brand-light text-gray-900'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="block text-xl mb-0.5">🏪</span>
+                    <span className="block text-sm font-bold">Recojo en local</span>
+                    <span className="block text-[11px] text-gray-500">Gratis</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMode('DELIVERY')}
+                    className={`rounded-xl border-2 p-3 text-center transition-colors ${
+                      isDelivery
+                        ? 'border-brand bg-brand-light text-gray-900'
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="block text-xl mb-0.5">🛵</span>
+                    <span className="block text-sm font-bold">Delivery</span>
+                    <span className="block text-[11px] text-gray-500">
+                      {formatCurrency(RATE_PER_KM)}/km
+                    </span>
+                  </button>
+                </div>
+
+                {isDelivery && (
+                  <div className="space-y-3">
+                    <DeliveryMapPicker
+                      onSelect={(sel) => { setDeliverySel(sel); setFeeAccepted(false); }}
+                    />
+
+                    <input
+                      type="text"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Dirección y referencia (ej. Av. Perú 123, dpto 4)"
+                      maxLength={300}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                    />
+
+                    {/* Aviso del cargo por delivery + confirmación */}
+                    {deliverySel && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-2.5">
+                        <p className="text-sm text-amber-900">
+                          ⚠️ Se añadirá{' '}
+                          <span className="font-extrabold">{formatCurrency(deliverySel.fee)}</span>{' '}
+                          a tu pedido por el delivery ({deliverySel.distanceKm} km ×{' '}
+                          {formatCurrency(RATE_PER_KM)}/km).
+                        </p>
+                        <label className="flex items-start gap-2 text-sm text-amber-900 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={feeAccepted}
+                            onChange={(e) => setFeeAccepted(e.target.checked)}
+                            className="mt-0.5 w-4 h-4 accent-amber-600"
+                          />
+                          <span className="font-semibold">Acepto el cargo adicional por delivery</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Resumen + confirmar */}
@@ -270,7 +471,10 @@ export default function KioskMenu() {
               </div>
               <div className="flex justify-between">
                 <span className="flex items-center gap-1 text-gray-500">
-                  Envío <InfoIcon className="w-4 h-4 text-gray-400" />
+                  {isDelivery && deliverySel
+                    ? `Delivery (${deliverySel.distanceKm} km)`
+                    : 'Envío'}
+                  <InfoIcon className="w-4 h-4 text-gray-400" />
                 </span>
                 <span className="font-semibold text-gray-900">{formatCurrency(shipping)}</span>
               </div>
@@ -293,16 +497,24 @@ export default function KioskMenu() {
               )}
               <button
                 type="submit"
-                disabled={submitting || cart.length === 0}
+                disabled={submitting || cart.length === 0 || deliveryIncomplete}
                 className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:hover:bg-brand text-white font-bold py-3.5 rounded-lg transition-colors"
               >
                 <LockIcon className="w-4 h-4" />
-                {submitting ? 'Enviando...' : 'Confirmar Pedido'}
+                {submitting ? 'Redirigiendo al pago...' : 'Pagar y Confirmar Pedido'}
               </button>
+              {deliveryIncomplete && cart.length > 0 && (
+                <p className="text-[11px] text-gray-400 text-center">
+                  Para confirmar: marca tu ubicación en el mapa, escribe tu dirección y acepta el
+                  cargo de delivery.
+                </p>
+              )}
             </form>
           </div>
         </aside>
       </div>
+
+      <ChatWidget />
     </div>
   );
 }

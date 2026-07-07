@@ -8,8 +8,8 @@ const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Devuelve el usuario sin el campo password
-function publicUser(user: { id: number; name: string; email: string }) {
-  return { id: user.id, name: user.name, email: user.email };
+function publicUser(user: { id: number; name: string; email: string; role: string }) {
+  return { id: user.id, name: user.name, email: user.email, role: user.role };
 }
 
 // POST /api/auth/register — registrar un nuevo usuario
@@ -30,8 +30,9 @@ router.post('/register', async (req: Request, res: Response) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
+    // Todo registro público crea un CLIENTE. El admin se siembra aparte.
     const user = await prisma.user.create({
-      data: { name, email, password: hashed },
+      data: { name, email, password: hashed, role: 'CLIENT' },
     });
 
     res.status(201).json(publicUser(user));
@@ -54,7 +55,8 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
+    if (!user || !user.password) {
+      // Sin password local (cuenta creada por Google) → debe entrar con Google.
       return res.status(401).json({ error: 'Correo o contraseña incorrectos' });
     }
 
@@ -66,6 +68,55 @@ router.post('/login', async (req: Request, res: Response) => {
     res.json(publicUser(user));
   } catch {
     res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
+// POST /api/auth/google — iniciar sesión con Google (One Tap / botón)
+// Recibe el `credential` (ID token JWT) que emite Google Identity Services.
+router.post('/google', async (req: Request, res: Response) => {
+  try {
+    const credential = String(req.body.credential ?? '');
+    if (!credential) {
+      return res.status(400).json({ error: 'Falta el token de Google' });
+    }
+
+    // Verificamos el token con Google (sin dependencias extra) y validamos la audiencia.
+    const resp = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`
+    );
+    if (!resp.ok) {
+      return res.status(401).json({ error: 'Token de Google inválido' });
+    }
+
+    const payload = (await resp.json()) as {
+      aud?: string;
+      email?: string;
+      email_verified?: string | boolean;
+      name?: string;
+    };
+
+    const expectedAud = process.env.GOOGLE_CLIENT_ID;
+    if (expectedAud && payload.aud !== expectedAud) {
+      return res.status(401).json({ error: 'El token no pertenece a esta aplicación' });
+    }
+
+    const email = String(payload.email ?? '').trim().toLowerCase();
+    const verified = payload.email_verified === true || payload.email_verified === 'true';
+    if (!email || !verified) {
+      return res.status(401).json({ error: 'No se pudo verificar tu correo de Google' });
+    }
+
+    // Buscamos al usuario; si no existe, lo creamos como CLIENTE (sin password local).
+    const name = String(payload.name ?? email.split('@')[0]);
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: { name, email, role: 'CLIENT' },
+    });
+
+    res.json(publicUser(user));
+  } catch {
+    res.status(500).json({ error: 'Error al iniciar sesión con Google' });
   }
 });
 

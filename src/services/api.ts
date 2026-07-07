@@ -29,12 +29,31 @@ export type OrderProductItem = {
   product: Product;
 };
 
+export type DeliveryInfo = {
+  type: 'PICKUP' | 'DELIVERY';
+  address?: string;
+  lat?: number;
+  lng?: number;
+  distanceKm?: number;
+  fee?: number;
+};
+
 export type Order = {
   id: number;
   name: string;
   total: number;
   status: boolean;
   orderReadyAt: string | null;
+  finalizedAt: string | null;
+  userId: number | null;
+  deliveryType: 'PICKUP' | 'DELIVERY';
+  deliveryAddress: string | null;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
+  distanceKm: number | null;
+  deliveryFee: number;
+  paymentId: string | null;
+  paymentStatus: string | null;
   createdAt: string;
   orderItems: OrderProductItem[];
 };
@@ -163,17 +182,75 @@ export async function deleteProduct(
 export async function createOrder(
   name: string,
   total: number,
-  order: CartItem[]
+  order: CartItem[],
+  userId?: number,
+  delivery?: DeliveryInfo
 ): Promise<{ order: Order | null; error: string | null }> {
   try {
     const newOrder = await request<Order>('/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, total, order }),
+      body: JSON.stringify({ name, total, order, userId, delivery }),
     });
     return { order: newOrder, error: null };
   } catch (e) {
     return { order: null, error: (e as Error).message };
+  }
+}
+
+// ─── Pagos (Mercado Pago) ────────────────────────────────────────────────────
+export async function createPaymentPreference(payload: {
+  name: string;
+  userId?: number;
+  order: { id: number; quantity: number }[];
+  delivery: DeliveryInfo;
+}): Promise<{ initPoint: string | null; error: string | null }> {
+  try {
+    const data = await request<{ initPoint: string }>('/payments/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return { initPoint: data.initPoint, error: null };
+  } catch (e) {
+    return { initPoint: null, error: (e as Error).message };
+  }
+}
+
+export async function confirmPayment(
+  paymentId: string
+): Promise<{ order: Order | null; error: string | null }> {
+  try {
+    const order = await request<Order>('/payments/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentId }),
+    });
+    return { order, error: null };
+  } catch (e) {
+    return { order: null, error: (e as Error).message };
+  }
+}
+
+// ─── getMyOrders ──────────────────────────────────────────────────────────────
+export async function getMyOrders(
+  userId: number
+): Promise<{ orders: Order[]; error: string | null }> {
+  try {
+    const orders = await request<Order[]>(`/orders/mine?userId=${userId}`);
+    return { orders, error: null };
+  } catch (e) {
+    return { orders: [], error: (e as Error).message };
+  }
+}
+
+// ─── finalizeOrder ────────────────────────────────────────────────────────────
+export async function finalizeOrder(id: number): Promise<{ error: string | null }> {
+  try {
+    await request(`/orders/${id}/finalize`, { method: 'PUT' });
+    return { error: null };
+  } catch (e) {
+    return { error: (e as Error).message };
   }
 }
 
@@ -209,11 +286,36 @@ export async function completeOrder(
   }
 }
 
+// ─── Chatbot ──────────────────────────────────────────────────────────────────
+export type ChatMessage = {
+  role: 'user' | 'model';
+  text: string;
+};
+
+export async function sendChatMessage(
+  message: string,
+  history: ChatMessage[] = []
+): Promise<{ reply: string | null; error: string | null }> {
+  try {
+    const data = await request<{ reply: string }>('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history }),
+    });
+    return { reply: data.reply, error: null };
+  } catch (e) {
+    return { reply: null, error: (e as Error).message };
+  }
+}
+
 // ─── Autenticación ──────────────────────────────────────────────────────────────
+export type UserRole = 'CLIENT' | 'ADMIN';
+
 export type AuthUser = {
   id: number;
   name: string;
   email: string;
+  role: UserRole;
 };
 
 export async function registerUser(
@@ -246,5 +348,62 @@ export async function loginUser(
     return { user, error: null };
   } catch (e) {
     return { user: null, error: (e as Error).message };
+  }
+}
+
+export async function loginWithGoogle(
+  credential: string
+): Promise<{ user: AuthUser | null; error: string | null }> {
+  try {
+    const user = await request<AuthUser>('/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential }),
+    });
+    return { user, error: null };
+  } catch (e) {
+    return { user: null, error: (e as Error).message };
+  }
+}
+
+// ─── CRUD de categorías (admin) ─────────────────────────────────────────────────
+export async function createCategory(
+  name: string,
+  icon: string
+): Promise<{ category: Category | null; error: string | null }> {
+  try {
+    const category = await request<Category>('/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, icon }),
+    });
+    return { category, error: null };
+  } catch (e) {
+    return { category: null, error: (e as Error).message };
+  }
+}
+
+export async function updateCategory(
+  id: number,
+  data: { name?: string; icon?: string }
+): Promise<{ category: Category | null; error: string | null }> {
+  try {
+    const category = await request<Category>(`/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return { category, error: null };
+  } catch (e) {
+    return { category: null, error: (e as Error).message };
+  }
+}
+
+export async function deleteCategory(id: number): Promise<{ error: string | null }> {
+  try {
+    await request(`/categories/${id}`, { method: 'DELETE' });
+    return { error: null };
+  } catch (e) {
+    return { error: (e as Error).message };
   }
 }

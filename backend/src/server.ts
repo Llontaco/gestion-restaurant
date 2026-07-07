@@ -7,6 +7,8 @@ import categoriesRouter from './routes/categories';
 import productsRouter from './routes/products';
 import ordersRouter from './routes/orders';
 import authRouter from './routes/auth';
+import chatRouter from './routes/chat';
+import paymentsRouter from './routes/payments';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,6 +50,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/orders', ordersRouter);
+app.use('/api/chat', chatRouter);
+app.use('/api/payments', paymentsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -55,7 +59,10 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
+// En Vercel (serverless) NO se levanta un servidor: se exporta el `app` como handler.
+// Solo escuchamos un puerto en ejecución local / hosts tradicionales.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
   console.log(`\n🚀 Backend corriendo en: http://localhost:${PORT}`);
   console.log(`📦 API disponible en:    http://localhost:${PORT}/api`);
   console.log(`\nEndpoints disponibles:`);
@@ -71,7 +78,9 @@ app.listen(PORT, () => {
   console.log(`  GET    /api/orders/ready`);
   console.log(`  POST   /api/orders`);
   console.log(`  PUT    /api/orders/:id/complete`);
+  console.log(`  POST   /api/chat`);
   console.log(`  GET    /api/health\n`);
-});
+  });
+}
 
 export default app;

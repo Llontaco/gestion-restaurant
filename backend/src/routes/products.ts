@@ -7,8 +7,13 @@ import prisma from '../prismaClient';
 const router = Router();
 
 // ─── Multer config ────────────────────────────────────────────────────────────
-const uploadsDir = process.env.UPLOADS_DIR || 'uploads';
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+// En Vercel serverless el FS del bundle es de solo lectura; usar /tmp (efímero).
+const uploadsDir = process.env.UPLOADS_DIR || (process.env.VERCEL ? '/tmp/uploads' : 'uploads');
+try {
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+} catch (err) {
+  console.warn(`No se pudo crear el directorio de uploads (${uploadsDir}):`, err);
+}
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -48,7 +53,7 @@ router.get('/', async (req: Request, res: Response) => {
     const where: Record<string, unknown> = {};
 
     if (search) {
-      where.name = { contains: String(search) };
+      where.name = { contains: String(search), mode: 'insensitive' };
     }
     if (categoryId) {
       where.categoryId = parseInt(String(categoryId));

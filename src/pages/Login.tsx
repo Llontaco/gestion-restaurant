@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import BrandLogo from '../components/BrandLogo';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 import { LockIcon } from '../components/icons';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loginGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +21,14 @@ export default function Login() {
     if (err) { setError(err); setLoading(false); }
     else { navigate('/vistas', { replace: true }); }
   }
+
+  const handleGoogle = useCallback(async (credential: string) => {
+    setError(null);
+    setLoading(true);
+    const { error: err } = await loginGoogle(credential);
+    if (err) { setError(err); setLoading(false); }
+    else { navigate('/vistas', { replace: true }); }
+  }, [loginGoogle, navigate]);
 
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6">
@@ -65,6 +74,14 @@ export default function Login() {
               {loading ? 'Entrando...' : 'Iniciar Sesión'}
             </button>
           </form>
+
+          {/* Separador + acceso opcional con Google */}
+          <div className="flex items-center gap-3 my-6">
+            <span className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400 font-medium">o continúa con</span>
+            <span className="flex-1 h-px bg-gray-200" />
+          </div>
+          <GoogleSignInButton onCredential={handleGoogle} onError={setError} />
 
           <p className="text-center text-sm text-gray-500 mt-6">
             ¿No tienes cuenta?{' '}

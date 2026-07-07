@@ -59,6 +59,7 @@ export default function AdminProducts() {
             <p className="text-gray-500">{search ? `No hay productos con "${search}"` : 'No hay productos'}</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-stone-50">
               <tr>
@@ -91,6 +92,7 @@ export default function AdminProducts() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

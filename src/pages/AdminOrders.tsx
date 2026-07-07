@@ -43,10 +43,37 @@ export default function AdminOrders() {
             >
               <div className="flex items-center justify-between">
                 <p className="font-serif text-xl font-bold text-gray-900">{order.name}</p>
-                <span className="text-xs font-semibold text-brand bg-brand-light px-2.5 py-1 rounded-full">
-                  Pendiente
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {order.paymentStatus === 'approved' && (
+                    <span className="text-xs font-semibold text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+                      ✓ Pagado
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold text-brand bg-brand-light px-2.5 py-1 rounded-full">
+                    Pendiente
+                  </span>
+                </div>
               </div>
+
+              {/* Modo de entrega */}
+              {order.deliveryType === 'DELIVERY' ? (
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-xs text-blue-900 space-y-0.5">
+                  <p className="font-bold">🛵 Delivery · {order.distanceKm} km · {formatCurrency(Number(order.deliveryFee))}</p>
+                  <p>{order.deliveryAddress}</p>
+                  {order.deliveryLat != null && (
+                    <a
+                      href={`https://www.google.com/maps?q=${order.deliveryLat},${order.deliveryLng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold underline"
+                    >
+                      Ver en Google Maps
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs font-semibold text-gray-500">🏪 Recojo en local</p>
+              )}
 
               <dl className="space-y-3">
                 {order.orderItems.map((item) => (

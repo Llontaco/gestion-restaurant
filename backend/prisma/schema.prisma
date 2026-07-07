@@ -2,12 +2,17 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "native" para desarrollo local; el target de Vercel (AWS Lambda) para producción
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Conexión pooled (PgBouncer) para las funciones serverless
+  url       = env("POSTGRES_PRISMA_URL")
+  // Conexión directa para migraciones / db push
+  directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
 model Category {
@@ -39,6 +44,23 @@ model Order {
   total        Decimal        @db.Decimal(10, 2)
   status       Boolean        @default(false)
   orderReadyAt DateTime?
+  // Cuándo el admin marcó la orden como entregada (sale del display "Órdenes Listas")
+  finalizedAt  DateTime?
+  // Cliente que hizo el pedido (null en órdenes antiguas / anónimas)
+  userId       Int?
+  // ─── Entrega ───
+  // "PICKUP" (recojo en local) o "DELIVERY" (envío a domicilio)
+  deliveryType    String   @default("PICKUP") @db.VarChar(10)
+  deliveryAddress String?  @db.VarChar(300)
+  deliveryLat     Float?
+  deliveryLng     Float?
+  // Distancia estimada desde el local (km) y cargo por delivery (S/)
+  distanceKm      Float?
+  deliveryFee     Decimal  @default(0) @db.Decimal(10, 2)
+  // ─── Pago (Mercado Pago) ───
+  // Id del pago aprobado en MP (único: evita registrar la misma compra dos veces)
+  paymentId       String?  @unique @db.VarChar(60)
+  paymentStatus   String?  @db.VarChar(20)
   createdAt    DateTime       @default(now())
   orderItems   OrderProduct[]
 
@@ -60,7 +82,10 @@ model User {
   id        Int      @id @default(autoincrement())
   name      String   @db.VarChar(100)
   email     String   @unique @db.VarChar(150)
-  password  String   @db.VarChar(255)
+  // Los usuarios que se registran por Google no tienen contraseña local.
+  password  String?  @db.VarChar(255)
+  // "CLIENT" (por defecto) o "ADMIN". Solo el admin ve el panel de administración.
+  role      String   @default("CLIENT") @db.VarChar(20)
   createdAt DateTime @default(now())
 
   @@map("users")
