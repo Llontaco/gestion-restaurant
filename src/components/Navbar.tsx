@@ -12,8 +12,8 @@ function tabClass(active: boolean) {
 export default function Navbar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const isAdmin = pathname.startsWith('/vistas/admin');
+  const { user, isAdmin, logout } = useAuth();
+  const onAdminRoute = pathname.startsWith('/vistas/admin');
   const isKiosk = pathname.startsWith('/vistas/kiosk');
 
   function handleLogout() {
@@ -32,10 +32,12 @@ export default function Navbar() {
 
         {/* Navegación de módulos */}
         <nav className="flex items-center gap-1.5">
-          <Link to="/vistas/admin/orders" className={tabClass(isAdmin)}>
-            <ClipboardIcon className="w-5 h-5" />
-            <span className="hidden sm:inline">Administrar</span>
-          </Link>
+          {isAdmin && (
+            <Link to="/vistas/admin/orders" className={tabClass(onAdminRoute)}>
+              <ClipboardIcon className="w-5 h-5" />
+              <span className="hidden sm:inline">Administrar</span>
+            </Link>
+          )}
           <Link to="/vistas/kiosk" className={tabClass(isKiosk)}>
             <StoreIcon className="w-5 h-5" />
             <span className="hidden sm:inline">Quiosco</span>

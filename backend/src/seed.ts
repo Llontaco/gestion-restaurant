@@ -1,4 +1,10 @@
+import bcrypt from 'bcryptjs';
 import prisma from './prismaClient';
+
+// ─── Cuenta ADMIN (única con acceso al panel de administración) ─────────────────
+// Credenciales por defecto — cámbialas después desde la BD o un panel de perfil.
+const ADMIN_EMAIL = 'admin@freshcoffee.com';
+const ADMIN_PASSWORD = 'FreshCoffee2026!';
 
 // ─── Datos reales exportados de la BD MySQL local ──────────────────────────────
 const categories = [
@@ -76,6 +82,15 @@ async function main() {
     await prisma.orderProduct.upsert({ where: { id: op.id }, update: op, create: op });
   }
   console.log(`  ✓ ${orderProducts.length} items de órdenes`);
+
+  // ─── Cuenta admin ─────────────────────────────────────────────────────────
+  const adminHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+  await prisma.user.upsert({
+    where: { email: ADMIN_EMAIL },
+    update: { role: 'ADMIN', password: adminHash },
+    create: { name: 'Administrador', email: ADMIN_EMAIL, password: adminHash, role: 'ADMIN' },
+  });
+  console.log(`  ✓ cuenta admin (${ADMIN_EMAIL})`);
 
   // Reajustar las secuencias de PostgreSQL tras insertar IDs explícitos
   await prisma.$executeRawUnsafe(`SELECT setval(pg_get_serial_sequence('categories', 'id'), (SELECT MAX(id) FROM categories))`);

@@ -1,5 +1,5 @@
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(amount);
+  return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 }
 
 // Maps a category name to its SVG icon slug

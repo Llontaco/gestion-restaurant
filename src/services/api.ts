@@ -232,10 +232,13 @@ export async function sendChatMessage(
 }
 
 // ─── Autenticación ──────────────────────────────────────────────────────────────
+export type UserRole = 'CLIENT' | 'ADMIN';
+
 export type AuthUser = {
   id: number;
   name: string;
   email: string;
+  role: UserRole;
 };
 
 export async function registerUser(
@@ -268,5 +271,62 @@ export async function loginUser(
     return { user, error: null };
   } catch (e) {
     return { user: null, error: (e as Error).message };
+  }
+}
+
+export async function loginWithGoogle(
+  credential: string
+): Promise<{ user: AuthUser | null; error: string | null }> {
+  try {
+    const user = await request<AuthUser>('/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential }),
+    });
+    return { user, error: null };
+  } catch (e) {
+    return { user: null, error: (e as Error).message };
+  }
+}
+
+// ─── CRUD de categorías (admin) ─────────────────────────────────────────────────
+export async function createCategory(
+  name: string,
+  icon: string
+): Promise<{ category: Category | null; error: string | null }> {
+  try {
+    const category = await request<Category>('/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, icon }),
+    });
+    return { category, error: null };
+  } catch (e) {
+    return { category: null, error: (e as Error).message };
+  }
+}
+
+export async function updateCategory(
+  id: number,
+  data: { name?: string; icon?: string }
+): Promise<{ category: Category | null; error: string | null }> {
+  try {
+    const category = await request<Category>(`/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return { category, error: null };
+  } catch (e) {
+    return { category: null, error: (e as Error).message };
+  }
+}
+
+export async function deleteCategory(id: number): Promise<{ error: string | null }> {
+  try {
+    await request(`/categories/${id}`, { method: 'DELETE' });
+    return { error: null };
+  } catch (e) {
+    return { error: (e as Error).message };
   }
 }

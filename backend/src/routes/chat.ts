@@ -5,7 +5,7 @@ const router = Router();
 
 // Modelo y endpoint de Gemini (API REST). La API key NUNCA se expone al frontend:
 // vive solo aquí, en una variable de entorno del backend.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // Instrucciones que LIMITAN al bot: solo puede hablar del restaurante / la app / el menú.

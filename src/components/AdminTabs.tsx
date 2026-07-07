@@ -4,6 +4,7 @@ import { ClipboardIcon, TagIcon, StoreIcon } from './icons';
 const TABS = [
   { to: '/vistas/admin/orders', label: 'Órdenes', icon: ClipboardIcon },
   { to: '/vistas/admin/products', label: 'Productos', icon: TagIcon },
+  { to: '/vistas/admin/categories', label: 'Categorías', icon: TagIcon },
   { to: '/vistas/orders-ready', label: 'Órdenes Listas', icon: StoreIcon },
 ];
 

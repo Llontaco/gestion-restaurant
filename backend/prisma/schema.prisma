@@ -65,7 +65,10 @@ model User {
   id        Int      @id @default(autoincrement())
   name      String   @db.VarChar(100)
   email     String   @unique @db.VarChar(150)
-  password  String   @db.VarChar(255)
+  // Los usuarios que se registran por Google no tienen contraseña local.
+  password  String?  @db.VarChar(255)
+  // "CLIENT" (por defecto) o "ADMIN". Solo el admin ve el panel de administración.
+  role      String   @default("CLIENT") @db.VarChar(20)
   createdAt DateTime @default(now())
 
   @@map("users")
