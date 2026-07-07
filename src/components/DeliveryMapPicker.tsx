@@ -19,7 +19,9 @@ function loadGoogleMaps(): Promise<void> {
   if (mapsPromise) return mapsPromise;
   mapsPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&v=weekly&loading=async&callback=__onGMapsReady`;
+    // Carga clásica (sin loading=async): al disparar el callback ya están
+    // disponibles google.maps.Map y google.maps.Marker.
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&v=weekly&callback=__onGMapsReady`;
     script.async = true;
     (window as any).__onGMapsReady = () => resolve();
     script.onerror = () => reject(new Error('No se pudo cargar Google Maps'));
