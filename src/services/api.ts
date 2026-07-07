@@ -52,6 +52,8 @@ export type Order = {
   deliveryLng: number | null;
   distanceKm: number | null;
   deliveryFee: number;
+  paymentId: string | null;
+  paymentStatus: string | null;
   createdAt: string;
   orderItems: OrderProductItem[];
 };
@@ -191,6 +193,40 @@ export async function createOrder(
       body: JSON.stringify({ name, total, order, userId, delivery }),
     });
     return { order: newOrder, error: null };
+  } catch (e) {
+    return { order: null, error: (e as Error).message };
+  }
+}
+
+// ─── Pagos (Mercado Pago) ────────────────────────────────────────────────────
+export async function createPaymentPreference(payload: {
+  name: string;
+  userId?: number;
+  order: { id: number; quantity: number }[];
+  delivery: DeliveryInfo;
+}): Promise<{ initPoint: string | null; error: string | null }> {
+  try {
+    const data = await request<{ initPoint: string }>('/payments/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return { initPoint: data.initPoint, error: null };
+  } catch (e) {
+    return { initPoint: null, error: (e as Error).message };
+  }
+}
+
+export async function confirmPayment(
+  paymentId: string
+): Promise<{ order: Order | null; error: string | null }> {
+  try {
+    const order = await request<Order>('/payments/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentId }),
+    });
+    return { order, error: null };
   } catch (e) {
     return { order: null, error: (e as Error).message };
   }

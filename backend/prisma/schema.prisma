@@ -57,6 +57,10 @@ model Order {
   // Distancia estimada desde el local (km) y cargo por delivery (S/)
   distanceKm      Float?
   deliveryFee     Decimal  @default(0) @db.Decimal(10, 2)
+  // ─── Pago (Mercado Pago) ───
+  // Id del pago aprobado en MP (único: evita registrar la misma compra dos veces)
+  paymentId       String?  @unique @db.VarChar(60)
+  paymentStatus   String?  @db.VarChar(20)
   createdAt    DateTime       @default(now())
   orderItems   OrderProduct[]
 

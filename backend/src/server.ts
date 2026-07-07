@@ -8,6 +8,7 @@ import productsRouter from './routes/products';
 import ordersRouter from './routes/orders';
 import authRouter from './routes/auth';
 import chatRouter from './routes/chat';
+import paymentsRouter from './routes/payments';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -50,6 +51,7 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/payments', paymentsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

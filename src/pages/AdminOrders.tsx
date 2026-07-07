@@ -43,9 +43,16 @@ export default function AdminOrders() {
             >
               <div className="flex items-center justify-between">
                 <p className="font-serif text-xl font-bold text-gray-900">{order.name}</p>
-                <span className="text-xs font-semibold text-brand bg-brand-light px-2.5 py-1 rounded-full">
-                  Pendiente
-                </span>
+                <div className="flex items-center gap-1.5">
+                  {order.paymentStatus === 'approved' && (
+                    <span className="text-xs font-semibold text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
+                      ✓ Pagado
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold text-brand bg-brand-light px-2.5 py-1 rounded-full">
+                    Pendiente
+                  </span>
+                </div>
               </div>
 
               {/* Modo de entrega */}

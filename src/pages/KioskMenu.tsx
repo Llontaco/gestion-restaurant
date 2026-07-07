@@ -13,7 +13,7 @@ import {
   XIcon,
   CategoryIcon,
 } from '../components/icons';
-import { getCategories, getProducts, createOrder } from '../services/api';
+import { getCategories, getProducts, createPaymentPreference, confirmPayment } from '../services/api';
 import { getImagePath, formatCurrency } from '../utils';
 import { useAuth } from '../context/AuthContext';
 import DeliveryMapPicker, { RATE_PER_KM, MAX_DELIVERY_KM } from '../components/DeliveryMapPicker';
@@ -39,6 +39,9 @@ export default function KioskMenu() {
   const [deliverySel, setDeliverySel] = useState<DeliverySelection | null>(null);
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [feeAccepted, setFeeAccepted] = useState(false);
+  // ─── Pago (Mercado Pago) ───
+  const [paidTotal, setPaidTotal] = useState<number | null>(null); // total del pedido ya pagado
+  const [confirmingPay, setConfirmingPay] = useState(false);       // verificando pago al volver de MP
 
   useEffect(() => {
     async function load() {
@@ -51,6 +54,57 @@ export default function KioskMenu() {
       setLoading(false);
     }
     load();
+  }, []);
+
+  // ─── Retorno desde Mercado Pago ───
+  // MP nos devuelve a /vistas/kiosk?mp=success|failure|pending&payment_id=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mp = params.get('mp');
+    if (!mp) return;
+
+    // Limpia la URL (evita re-procesar al refrescar)
+    window.history.replaceState({}, '', window.location.pathname);
+
+    const restoreCheckout = () => {
+      try {
+        const raw = localStorage.getItem('fc_pending_checkout');
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        setCart(saved.cart ?? []);
+        setClientName(saved.clientName ?? '');
+        setDeliveryMode(saved.deliveryMode ?? 'PICKUP');
+        setDeliverySel(saved.deliverySel ?? null);
+        setDeliveryAddress(saved.deliveryAddress ?? '');
+        setFeeAccepted(false);
+      } catch { /* carrito no recuperable */ }
+    };
+
+    if (mp === 'success') {
+      const paymentId = params.get('payment_id') || params.get('collection_id');
+      if (!paymentId) { restoreCheckout(); setError('No se recibió el pago. Intenta de nuevo.'); return; }
+      setConfirmingPay(true);
+      confirmPayment(paymentId).then(({ order, error: err }) => {
+        setConfirmingPay(false);
+        if (order) {
+          localStorage.removeItem('fc_pending_checkout');
+          setClientName(order.name);
+          setPaidTotal(Number(order.total));
+          setConfirmed(true);
+        } else {
+          restoreCheckout();
+          setError(err ?? 'No se pudo verificar el pago. Si te cobraron, contáctanos.');
+        }
+      });
+    } else {
+      // failure o pending: restauramos el carrito para que pueda reintentar
+      restoreCheckout();
+      setError(
+        mp === 'pending'
+          ? 'Tu pago quedó pendiente. Cuando se apruebe, tu pedido aparecerá en "Mis Pedidos".'
+          : 'El pago no se completó. Puedes intentarlo de nuevo.'
+      );
+    }
   }, []);
 
   useEffect(() => {
@@ -93,6 +147,7 @@ export default function KioskMenu() {
     if (!clientName.trim() || cart.length === 0 || deliveryIncomplete) return;
     setSubmitting(true);
     setError(null);
+
     const delivery = isDelivery && deliverySel
       ? {
           type: 'DELIVERY' as const,
@@ -103,9 +158,42 @@ export default function KioskMenu() {
           fee: deliverySel.fee,
         }
       : { type: 'PICKUP' as const };
-    const { error: err } = await createOrder(clientName, total, cart, user?.id, delivery);
-    if (err) { setError(err); setSubmitting(false); }
-    else { setConfirmed(true); setSubmitting(false); }
+
+    // Guardamos el checkout por si el pago falla y hay que reintentarlo
+    localStorage.setItem(
+      'fc_pending_checkout',
+      JSON.stringify({ cart, clientName, deliveryMode, deliverySel, deliveryAddress })
+    );
+
+    // Creamos la preferencia de pago y redirigimos a Mercado Pago.
+    // La orden se registra recién cuando el pago esté aprobado.
+    const { initPoint, error: err } = await createPaymentPreference({
+      name: clientName,
+      userId: user?.id,
+      order: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
+      delivery,
+    });
+
+    if (err || !initPoint) {
+      setError(err ?? 'No se pudo iniciar el pago');
+      setSubmitting(false);
+      return;
+    }
+    window.location.href = initPoint;
+  }
+
+  /* ── VERIFICANDO PAGO (retorno de Mercado Pago) ── */
+  if (confirmingPay) {
+    return (
+      <div className="min-h-screen flex flex-col bg-surface">
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-6">
+          <div className="w-16 h-16 rounded-full border-4 border-brand border-t-transparent animate-spin" />
+          <h1 className="font-serif text-2xl font-bold text-gray-900">Verificando tu pago...</h1>
+          <p className="text-gray-500 text-sm">Un momento, estamos confirmando con Mercado Pago.</p>
+        </div>
+      </div>
+    );
   }
 
   /* ── CONFIRMACIÓN ── */
@@ -117,13 +205,16 @@ export default function KioskMenu() {
           <div className="w-20 h-20 rounded-full bg-brand-light flex items-center justify-center">
             <CartIcon className="w-10 h-10 text-brand" />
           </div>
-          <h1 className="font-serif text-4xl font-bold text-gray-900">¡Pedido Confirmado!</h1>
+          <h1 className="font-serif text-4xl font-bold text-gray-900">¡Pedido Realizado!</h1>
           <p className="text-lg text-gray-500">
-            Gracias <strong className="text-gray-900">{clientName}</strong>, tu pedido está siendo preparado.
+            Gracias <strong className="text-gray-900">{clientName}</strong>, tu pago fue aprobado y
+            tu pedido está siendo preparado.
           </p>
-          <p className="font-serif text-3xl font-extrabold text-brand">{formatCurrency(total)}</p>
+          <p className="font-serif text-3xl font-extrabold text-brand">
+            {formatCurrency(paidTotal ?? total)}
+          </p>
           <button
-            onClick={() => { setCart([]); setClientName(''); setConfirmed(false); }}
+            onClick={() => { setCart([]); setClientName(''); setConfirmed(false); setPaidTotal(null); }}
             className="mt-2 bg-gray-900 hover:bg-black text-white font-bold px-9 py-3 rounded-lg transition-colors"
           >
             Nuevo Pedido
@@ -410,7 +501,7 @@ export default function KioskMenu() {
                 className="w-full flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark disabled:opacity-50 disabled:hover:bg-brand text-white font-bold py-3.5 rounded-lg transition-colors"
               >
                 <LockIcon className="w-4 h-4" />
-                {submitting ? 'Enviando...' : 'Confirmar Pedido'}
+                {submitting ? 'Redirigiendo al pago...' : 'Pagar y Confirmar Pedido'}
               </button>
               {deliveryIncomplete && cart.length > 0 && (
                 <p className="text-[11px] text-gray-400 text-center">
