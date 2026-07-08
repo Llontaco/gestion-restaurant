@@ -178,6 +178,18 @@ export async function deleteProduct(
   }
 }
 
+// ─── getSalesReport ───────────────────────────────────────────────────────────
+export async function getSalesReport(
+  date: string
+): Promise<{ orders: Order[]; error: string | null }> {
+  try {
+    const orders = await request<Order[]>(`/orders/report?date=${date}`);
+    return { orders, error: null };
+  } catch (e) {
+    return { orders: [], error: (e as Error).message };
+  }
+}
+
 // ─── createOrder ──────────────────────────────────────────────────────────────
 export async function createOrder(
   name: string,

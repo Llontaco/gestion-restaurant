@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '../components/AdminLayout';
+import SalesReportExport from '../components/SalesReportExport';
 import { getPendingOrders, completeOrder } from '../services/api';
 import { formatCurrency } from '../utils';
 import type { Order } from '../services/api';
@@ -29,7 +30,7 @@ export default function AdminOrders() {
   }
 
   return (
-    <AdminLayout title="Administrar órdenes">
+    <AdminLayout title="Administrar órdenes" action={<SalesReportExport />}>
       {loading ? (
         <p className="text-center text-gray-500 mt-20">Cargando órdenes...</p>
       ) : orders.length === 0 ? (
