@@ -2,29 +2,21 @@ import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { put, del } from '@vercel/blob';
 import prisma from '../prismaClient';
 
 const router = Router();
 
-// ─── Multer config ────────────────────────────────────────────────────────────
-// En Vercel serverless el FS del bundle es de solo lectura; usar /tmp (efímero).
+// ─── Almacenamiento de imágenes ──────────────────────────────────────────────
+// En producción las imágenes van a Vercel Blob (el FS serverless es efímero:
+// un archivo guardado en disco desaparece y la imagen se ve rota). Sin token
+// (desarrollo local sin configurar), caen al disco como antes.
+const BLOB_ENABLED = !!process.env.BLOB_READ_WRITE_TOKEN;
 const uploadsDir = process.env.UPLOADS_DIR || (process.env.VERCEL ? '/tmp/uploads' : 'uploads');
-try {
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-} catch (err) {
-  console.warn(`No se pudo crear el directorio de uploads (${uploadsDir}):`, err);
-}
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}${path.extname(file.originalname)}`);
-  },
-});
-
+// Multer en memoria: el buffer se sube a Blob (o se escribe a disco en local)
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (_req, file, cb) => {
     const allowed = /jpeg|jpg|png|webp/;
@@ -33,6 +25,33 @@ const upload = multer({
     ok ? cb(null, true) : cb(new Error('Solo se permiten imágenes (jpg, png, webp)'));
   },
 });
+
+// Guarda la imagen y devuelve lo que se persiste en la BD:
+// URL pública del Blob en producción, o ruta "uploads/..." en local.
+async function saveImage(file: Express.Multer.File): Promise<string> {
+  const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname).toLowerCase()}`;
+  if (BLOB_ENABLED) {
+    const blob = await put(`products/${unique}`, file.buffer, {
+      access: 'public',
+      contentType: file.mimetype,
+    });
+    return blob.url;
+  }
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+  fs.writeFileSync(path.join(uploadsDir, unique), file.buffer);
+  return `${uploadsDir}/${unique}`;
+}
+
+// Borra la imagen anterior si era subida (Blob o disco). Los emojis y las
+// imágenes del seed (/products/...) no se tocan.
+function deleteImage(image: string | null) {
+  if (!image) return;
+  if (image.includes('.blob.vercel-storage.com/')) {
+    del(image).catch(() => {});
+  } else if (image.startsWith(uploadsDir)) {
+    fs.unlink(image, () => {});
+  }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function imageUrl(req: Request, filename: string | null): string | null {
@@ -115,7 +134,7 @@ router.post('/', upload.single('image'), async (req: Request, res: Response) => 
     if (!category) return res.status(400).json({ error: 'Categoría no encontrada' });
 
     const imageValue = req.file
-      ? `${uploadsDir}/${req.file.filename}`
+      ? await saveImage(req.file)
       : (req.body.imageEmoji ?? null);
 
     const product = await prisma.product.create({
@@ -151,13 +170,11 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
       if (!cat) return res.status(400).json({ error: 'Categoría no encontrada' });
     }
 
-    // Delete old file if a new image is uploaded
-    if (req.file && existing.image && existing.image.startsWith(uploadsDir)) {
-      fs.unlink(existing.image, () => {});
-    }
+    // Si suben una imagen nueva, borra la anterior (Blob o disco)
+    if (req.file) deleteImage(existing.image);
 
     const imageValue = req.file
-      ? `${uploadsDir}/${req.file.filename}`
+      ? await saveImage(req.file)
       : imageEmoji !== undefined
       ? imageEmoji
       : existing.image;
@@ -187,10 +204,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const existing = await prisma.product.findUnique({ where: { id } });
     if (!existing) return res.status(404).json({ error: 'Producto no encontrado' });
 
-    // Delete image file if it was uploaded
-    if (existing.image && existing.image.startsWith(uploadsDir)) {
-      fs.unlink(existing.image, () => {});
-    }
+    // Borra la imagen si era subida (Blob o disco)
+    deleteImage(existing.image);
 
     await prisma.product.delete({ where: { id } });
     res.json({ message: 'Producto eliminado correctamente' });

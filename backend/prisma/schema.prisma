@@ -50,6 +50,7 @@ model Order {
   finalizedAt  DateTime?
   // Cliente que hizo el pedido (null en órdenes antiguas / anónimas)
   userId       Int?
+  user         User?          @relation(fields: [userId], references: [id])
   // ─── Entrega ───
   // "PICKUP" (recojo en local) o "DELIVERY" (envío a domicilio)
   deliveryType    String   @default("PICKUP") @db.VarChar(10)
@@ -91,6 +92,7 @@ model User {
   // "CLIENT" (por defecto) o "ADMIN". Solo el admin ve el panel de administración.
   role      String   @default("CLIENT") @db.VarChar(20)
   createdAt DateTime @default(now())
+  orders    Order[]
 
   @@map("users")
 }
