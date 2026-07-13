@@ -5,6 +5,18 @@ import { getPendingOrders, completeOrder } from '../services/api';
 import { formatCurrency } from '../utils';
 import type { Order } from '../services/api';
 
+// Fecha y hora del pedido en hora de Perú (ej. "13 jul, 2:45 p. m.")
+function formatOrderDate(iso: string): string {
+  return new Intl.DateTimeFormat('es-PE', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'America/Lima',
+  }).format(new Date(iso));
+}
+
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +60,7 @@ export default function AdminOrders() {
                   {order.code && (
                     <p className="text-xs font-mono font-semibold text-gray-400">{order.code}</p>
                   )}
+                  <p className="text-xs text-gray-500 mt-0.5">🕐 {formatOrderDate(order.createdAt)}</p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {order.paymentStatus === 'approved' && (

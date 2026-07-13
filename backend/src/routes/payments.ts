@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prismaClient';
+import { notifyOrderConfirmed } from '../notifications';
 
 const router = Router();
 
@@ -112,10 +113,15 @@ router.post('/create', async (req: Request, res: Response) => {
       }
     }
 
+    // Teléfono: el que escriba en el checkout o, en delivery, el del repartidor
+    const payerPhone = String(payer?.phone ?? '').replace(/\D/g, '') ||
+                       deliveryPhone.replace(/\D/g, '');
+
     // Payload compacto del pedido; viaja en metadata y se usa al aprobar el pago
     const orderPayload = {
       n: String(name).slice(0, 200),
       u: userId ? parseInt(String(userId)) : null,
+      ph: payerPhone || null,
       i: order.map((l) => [l.id, Math.max(1, parseInt(String(l.quantity)) || 1)]),
       d: isDelivery
         ? {
@@ -135,9 +141,6 @@ router.post('/create', async (req: Request, res: Response) => {
     const nameParts = String(name).trim().split(/\s+/);
     const firstName = nameParts[0];
     const surname = nameParts.slice(1).join(' ');
-    // Teléfono: el que escriba en el checkout o, en delivery, el del repartidor
-    const payerPhone = String(payer?.phone ?? '').replace(/\D/g, '') ||
-                       deliveryPhone.replace(/\D/g, '');
     // DNI peruano: exactamente 8 dígitos; si no, no se envía
     const payerDni = String(payer?.dni ?? '').replace(/\D/g, '');
 
@@ -262,6 +265,7 @@ async function verifyAndRegister(paymentId: string) {
   const p = JSON.parse(raw) as {
     n: string;
     u: number | null;
+    ph?: string | null;
     i: [number, number][];
     d: { t: string; a?: string; p?: string; la?: number; ln?: number; k?: number; f?: number };
   };
@@ -295,6 +299,17 @@ async function verifyAndRegister(paymentId: string) {
       });
       // Vincular el registro del pago con la orden creada
       await prisma.payment.update({ where: { id: payRecord.id }, data: { orderId: order.id } });
+
+      // Avisar al cliente por WhatsApp y correo (solo la primera vez que se
+      // registra la orden; nunca lanza)
+      const phone = p.ph ?? p.d?.p ?? null;
+      let email = payment.payer?.email ?? null;
+      if (p.u) {
+        const u = await prisma.user.findUnique({ where: { id: p.u } });
+        email = u?.email ?? email;
+      }
+      await notifyOrderConfirmed(order, phone, email);
+
       return { error: null, order, status: 'approved' };
     } catch (e: any) {
       if (e?.code === 'P2002') {

@@ -13,7 +13,8 @@ router.get('/pending', async (_req: Request, res: Response) => {
           include: { product: true },
         },
       },
-      orderBy: { createdAt: 'asc' },
+      // La orden más reciente primero
+      orderBy: { createdAt: 'desc' },
     });
     res.json(orders);
   } catch {

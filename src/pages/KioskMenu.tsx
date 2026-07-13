@@ -465,7 +465,8 @@ export default function KioskMenu() {
                       className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
                     />
                     <p className="text-[11px] text-gray-400 -mt-1.5">
-                      El repartidor te llamará a este número cuando llegue.
+                      El repartidor te llamará a este número cuando llegue y te
+                      confirmaremos tu pedido por WhatsApp.
                     </p>
 
                     {/* Aviso del cargo por delivery + confirmación */}
@@ -530,7 +531,7 @@ export default function KioskMenu() {
                   {!isDelivery && (
                     <input
                       type="tel"
-                      placeholder="Teléfono (opcional)"
+                      placeholder="Celular (opcional, te confirmamos por WhatsApp)"
                       value={deliveryPhone}
                       onChange={(e) => setDeliveryPhone(e.target.value)}
                       maxLength={20}
