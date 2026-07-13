@@ -40,6 +40,8 @@ export default function KioskMenu() {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryPhone, setDeliveryPhone] = useState('');
   const [feeAccepted, setFeeAccepted] = useState(false);
+  // DNI opcional del comprador: mejora la tasa de aprobación en Mercado Pago
+  const [payerDni, setPayerDni] = useState('');
   // ─── Pago (Mercado Pago) ───
   const [paidTotal, setPaidTotal] = useState<number | null>(null); // total del pedido ya pagado
   const [paidCode, setPaidCode] = useState<string | null>(null);   // código único del pedido pagado
@@ -79,6 +81,7 @@ export default function KioskMenu() {
         setDeliverySel(saved.deliverySel ?? null);
         setDeliveryAddress(saved.deliveryAddress ?? '');
         setDeliveryPhone(saved.deliveryPhone ?? '');
+        setPayerDni(saved.payerDni ?? '');
         setFeeAccepted(false);
       } catch { /* carrito no recuperable */ }
     };
@@ -168,7 +171,7 @@ export default function KioskMenu() {
     // Guardamos el checkout por si el pago falla y hay que reintentarlo
     localStorage.setItem(
       'fc_pending_checkout',
-      JSON.stringify({ cart, clientName, deliveryMode, deliverySel, deliveryAddress, deliveryPhone })
+      JSON.stringify({ cart, clientName, deliveryMode, deliverySel, deliveryAddress, deliveryPhone, payerDni })
     );
 
     // Creamos la preferencia de pago y redirigimos a Mercado Pago.
@@ -178,6 +181,7 @@ export default function KioskMenu() {
       userId: user?.id,
       order: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
       delivery,
+      payer: { phone: deliveryPhone.trim(), dni: payerDni.trim() },
     });
 
     if (err || !initPoint) {
@@ -514,14 +518,35 @@ export default function KioskMenu() {
 
             <form onSubmit={handleConfirm} className="space-y-3">
               {cart.length > 0 && (
-                <input
-                  type="text"
-                  placeholder="Tu nombre"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  required
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
-                />
+                <>
+                  <input
+                    type="text"
+                    placeholder="Tu nombre y apellido"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    required
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                  />
+                  {!isDelivery && (
+                    <input
+                      type="tel"
+                      placeholder="Teléfono (opcional)"
+                      value={deliveryPhone}
+                      onChange={(e) => setDeliveryPhone(e.target.value)}
+                      maxLength={20}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                    />
+                  )}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="DNI (opcional, agiliza la aprobación del pago)"
+                    value={payerDni}
+                    onChange={(e) => setPayerDni(e.target.value.replace(/\D/g, ''))}
+                    maxLength={8}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                  />
+                </>
               )}
               <button
                 type="submit"

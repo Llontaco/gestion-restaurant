@@ -32,11 +32,14 @@ router.post('/create', async (req: Request, res: Response) => {
     const token = process.env.MP_ACCESS_TOKEN;
     if (!token) return res.status(500).json({ error: 'Pagos no configurados (falta MP_ACCESS_TOKEN)' });
 
-    const { name, userId, order, delivery } = req.body as {
+    const { name, userId, order, delivery, payer } = req.body as {
       name?: string;
       userId?: number;
       order?: CartLine[];
       delivery?: { type: string; address?: string; lat?: number; lng?: number; phone?: string };
+      // Datos opcionales del comprador: mejoran la calidad de la integración
+      // y la tasa de aprobación de MP
+      payer?: { phone?: string; dni?: string };
     };
 
     if (!name || !order || !Array.isArray(order) || order.length === 0) {
@@ -127,6 +130,25 @@ router.post('/create', async (req: Request, res: Response) => {
         : { t: 'PICKUP' },
     };
 
+    // ─── Datos del comprador para MP (suben la tasa de aprobación) ───
+    // Nombre y apellido a partir del campo único "Tu nombre"
+    const nameParts = String(name).trim().split(/\s+/);
+    const firstName = nameParts[0];
+    const surname = nameParts.slice(1).join(' ');
+    // Teléfono: el que escriba en el checkout o, en delivery, el del repartidor
+    const payerPhone = String(payer?.phone ?? '').replace(/\D/g, '') ||
+                       deliveryPhone.replace(/\D/g, '');
+    // DNI peruano: exactamente 8 dígitos; si no, no se envía
+    const payerDni = String(payer?.dni ?? '').replace(/\D/g, '');
+
+    const mpPayer = {
+      name: firstName,
+      ...(surname ? { surname } : {}),
+      ...(payerEmail ? { email: payerEmail } : {}),
+      ...(payerPhone.length >= 7 ? { phone: { number: payerPhone } } : {}),
+      ...(payerDni.length === 8 ? { identification: { type: 'DNI', number: payerDni } } : {}),
+    };
+
     // URL del frontend para volver tras el pago
     const origin = req.get('origin') || process.env.FRONTEND_URL || 'http://localhost:5173';
     const backendBase = `${req.protocol}://${req.get('host')}`;
@@ -139,7 +161,7 @@ router.post('/create', async (req: Request, res: Response) => {
       },
       body: JSON.stringify({
         items,
-        payer: { name: String(name), ...(payerEmail ? { email: payerEmail } : {}) },
+        payer: mpPayer,
         metadata: { order_json: JSON.stringify(orderPayload) },
         external_reference: `fc-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
         back_urls: {
