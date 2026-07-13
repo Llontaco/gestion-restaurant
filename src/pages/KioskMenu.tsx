@@ -104,7 +104,10 @@ export default function KioskMenu() {
         }
       });
     } else {
-      // failure o pending: restauramos el carrito para que pueda reintentar
+      // failure o pending: registramos el intento en el backend (queda en la
+      // tabla payments con su motivo) y restauramos el carrito para reintentar
+      const paymentId = params.get('payment_id') || params.get('collection_id');
+      if (paymentId && paymentId !== 'null') void confirmPayment(paymentId);
       restoreCheckout();
       setError(
         mp === 'pending'
