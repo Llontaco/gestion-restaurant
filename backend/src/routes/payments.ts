@@ -217,9 +217,40 @@ async function verifyAndRegister(paymentId: string) {
 
   const payment = (await payRes.json()) as {
     status: string;
+    status_detail?: string;
     transaction_amount: number;
+    currency_id?: string;
+    payment_method_id?: string;
+    payment_type_id?: string;
+    installments?: number;
+    external_reference?: string;
+    payer?: { email?: string | null };
+    transaction_details?: { net_received_amount?: number };
+    fee_details?: { amount?: number }[];
     metadata?: { order_json?: string };
   };
+
+  // Registrar el pago en la tabla payments, sea cual sea su estado.
+  // Upsert: el webhook puede avisar varias veces (pending → approved).
+  const feeAmount = (payment.fee_details ?? []).reduce((s, f) => s + (Number(f.amount) || 0), 0);
+  const paymentData = {
+    status: payment.status,
+    statusDetail: payment.status_detail ?? null,
+    amount: payment.transaction_amount,
+    currency: payment.currency_id ?? 'PEN',
+    method: payment.payment_method_id ?? null,
+    methodType: payment.payment_type_id ?? null,
+    installments: payment.installments ?? null,
+    payerEmail: payment.payer?.email ?? null,
+    feeAmount: feeAmount || null,
+    netAmount: payment.transaction_details?.net_received_amount ?? null,
+    externalReference: payment.external_reference ?? null,
+  };
+  const payRecord = await prisma.payment.upsert({
+    where: { mpPaymentId: String(paymentId) },
+    update: paymentData,
+    create: { mpPaymentId: String(paymentId), ...paymentData },
+  });
 
   if (payment.status !== 'approved') {
     return { error: null, order: null, status: payment.status };
@@ -262,6 +293,8 @@ async function verifyAndRegister(paymentId: string) {
         data: { ...data, code: genOrderCode() },
         include: { orderItems: { include: { product: true } } },
       });
+      // Vincular el registro del pago con la orden creada
+      await prisma.payment.update({ where: { id: payRecord.id }, data: { orderId: order.id } });
       return { error: null, order, status: 'approved' };
     } catch (e: any) {
       if (e?.code === 'P2002') {
@@ -269,7 +302,10 @@ async function verifyAndRegister(paymentId: string) {
           where: { paymentId: String(paymentId) },
           include: { orderItems: { include: { product: true } } },
         });
-        if (dup) return { error: null, order: dup, status: 'approved' };
+        if (dup) {
+          await prisma.payment.update({ where: { id: payRecord.id }, data: { orderId: dup.id } });
+          return { error: null, order: dup, status: 'approved' };
+        }
         continue; // colisión de código: genera otro
       }
       throw e;
