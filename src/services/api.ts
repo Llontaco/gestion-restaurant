@@ -32,6 +32,7 @@ export type OrderProductItem = {
 export type DeliveryInfo = {
   type: 'PICKUP' | 'DELIVERY';
   address?: string;
+  phone?: string;
   lat?: number;
   lng?: number;
   distanceKm?: number;
@@ -40,6 +41,8 @@ export type DeliveryInfo = {
 
 export type Order = {
   id: number;
+  // Código público único del pedido (ej. "FC-8K3N2A")
+  code: string | null;
   name: string;
   total: number;
   status: boolean;
@@ -48,6 +51,7 @@ export type Order = {
   userId: number | null;
   deliveryType: 'PICKUP' | 'DELIVERY';
   deliveryAddress: string | null;
+  deliveryPhone: string | null;
   deliveryLat: number | null;
   deliveryLng: number | null;
   distanceKm: number | null;

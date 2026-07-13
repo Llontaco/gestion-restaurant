@@ -40,6 +40,8 @@ model Product {
 
 model Order {
   id           Int            @id @default(autoincrement())
+  // Código público único del pedido (ej. "FC-8K3N2A"), visible para el cliente
+  code         String?        @unique @db.VarChar(20)
   name         String         @db.VarChar(200)
   total        Decimal        @db.Decimal(10, 2)
   status       Boolean        @default(false)
@@ -52,6 +54,8 @@ model Order {
   // "PICKUP" (recojo en local) o "DELIVERY" (envío a domicilio)
   deliveryType    String   @default("PICKUP") @db.VarChar(10)
   deliveryAddress String?  @db.VarChar(300)
+  // Teléfono de contacto para que el repartidor llame al llegar
+  deliveryPhone   String?  @db.VarChar(20)
   deliveryLat     Float?
   deliveryLng     Float?
   // Distancia estimada desde el local (km) y cargo por delivery (S/)

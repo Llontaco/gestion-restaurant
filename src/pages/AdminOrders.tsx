@@ -43,7 +43,12 @@ export default function AdminOrders() {
               className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4"
             >
               <div className="flex items-center justify-between">
-                <p className="font-serif text-xl font-bold text-gray-900">{order.name}</p>
+                <div>
+                  <p className="font-serif text-xl font-bold text-gray-900">{order.name}</p>
+                  {order.code && (
+                    <p className="text-xs font-mono font-semibold text-gray-400">{order.code}</p>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5">
                   {order.paymentStatus === 'approved' && (
                     <span className="text-xs font-semibold text-green-700 bg-green-100 px-2.5 py-1 rounded-full">
@@ -61,6 +66,14 @@ export default function AdminOrders() {
                 <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 text-xs text-blue-900 space-y-0.5">
                   <p className="font-bold">🛵 Delivery · {order.distanceKm} km · {formatCurrency(Number(order.deliveryFee))}</p>
                   <p>{order.deliveryAddress}</p>
+                  {order.deliveryPhone && (
+                    <p>
+                      📞 Llamar al llegar:{' '}
+                      <a href={`tel:${order.deliveryPhone}`} className="font-bold underline">
+                        {order.deliveryPhone}
+                      </a>
+                    </p>
+                  )}
                   {order.deliveryLat != null && (
                     <a
                       href={`https://www.google.com/maps?q=${order.deliveryLat},${order.deliveryLng}`}
