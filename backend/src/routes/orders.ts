@@ -3,11 +3,11 @@ import prisma from '../prismaClient';
 
 const router = Router();
 
-// GET /api/orders/pending — órdenes pendientes (status = false)
+// GET /api/orders/pending — órdenes por preparar (solo con pago aprobado)
 router.get('/pending', async (_req: Request, res: Response) => {
   try {
     const orders = await prisma.order.findMany({
-      where: { status: false },
+      where: { status: false, paymentStatus: 'approved' },
       include: {
         orderItems: {
           include: { product: true },

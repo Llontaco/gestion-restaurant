@@ -69,7 +69,7 @@ export default function AdminOrders() {
                     </span>
                   )}
                   <span className="text-xs font-semibold text-brand bg-brand-light px-2.5 py-1 rounded-full">
-                    Pendiente
+                    Por preparar
                   </span>
                 </div>
               </div>
