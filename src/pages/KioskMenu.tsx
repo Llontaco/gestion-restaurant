@@ -42,6 +42,9 @@ export default function KioskMenu() {
   const [feeAccepted, setFeeAccepted] = useState(false);
   // DNI opcional del comprador: mejora la tasa de aprobación en Mercado Pago
   const [payerDni, setPayerDni] = useState('');
+  // Correo del comprador: MP lo exige en la preferencia para bajar el score de
+  // riesgo (cc_rejected_high_risk). Los usuarios logueados usan el de su cuenta.
+  const [payerEmail, setPayerEmail] = useState('');
   // ─── Pago (Mercado Pago) ───
   const [paidTotal, setPaidTotal] = useState<number | null>(null); // total del pedido ya pagado
   const [paidCode, setPaidCode] = useState<string | null>(null);   // código único del pedido pagado
@@ -82,6 +85,7 @@ export default function KioskMenu() {
         setDeliveryAddress(saved.deliveryAddress ?? '');
         setDeliveryPhone(saved.deliveryPhone ?? '');
         setPayerDni(saved.payerDni ?? '');
+        setPayerEmail(saved.payerEmail ?? '');
         setFeeAccepted(false);
       } catch { /* carrito no recuperable */ }
     };
@@ -174,7 +178,7 @@ export default function KioskMenu() {
     // Guardamos el checkout por si el pago falla y hay que reintentarlo
     localStorage.setItem(
       'fc_pending_checkout',
-      JSON.stringify({ cart, clientName, deliveryMode, deliverySel, deliveryAddress, deliveryPhone, payerDni })
+      JSON.stringify({ cart, clientName, deliveryMode, deliverySel, deliveryAddress, deliveryPhone, payerDni, payerEmail })
     );
 
     // Creamos la preferencia de pago y redirigimos a Mercado Pago.
@@ -184,7 +188,11 @@ export default function KioskMenu() {
       userId: user?.id,
       order: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
       delivery,
-      payer: { phone: deliveryPhone.trim(), dni: payerDni.trim() },
+      payer: {
+        phone: deliveryPhone.trim(),
+        dni: payerDni.trim(),
+        email: (user?.email ?? payerEmail).trim(),
+      },
     });
 
     if (err || !initPoint) {
@@ -550,6 +558,17 @@ export default function KioskMenu() {
                     maxLength={8}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
                   />
+                  {!user && (
+                    <input
+                      type="email"
+                      placeholder="Tu correo (te confirmamos el pedido)"
+                      value={payerEmail}
+                      onChange={(e) => setPayerEmail(e.target.value)}
+                      required
+                      maxLength={100}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                    />
+                  )}
                 </>
               )}
               <button

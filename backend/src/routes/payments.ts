@@ -40,7 +40,7 @@ router.post('/create', async (req: Request, res: Response) => {
       delivery?: { type: string; address?: string; lat?: number; lng?: number; phone?: string };
       // Datos opcionales del comprador: mejoran la calidad de la integración
       // y la tasa de aprobación de MP
-      payer?: { phone?: string; dni?: string };
+      payer?: { phone?: string; dni?: string; email?: string };
     };
 
     if (!name || !order || !Array.isArray(order) || order.length === 0) {
@@ -71,12 +71,17 @@ router.post('/create', async (req: Request, res: Response) => {
       };
     });
 
-    // Email del comprador (si inició sesión): mejora la calidad de la integración
-    // y la tasa de aprobación de MP.
+    // Email del comprador: enviarlo SIEMPRE en la preferencia baja el score de
+    // riesgo de MP (cc_rejected_high_risk). Logueado: el de su cuenta; invitado:
+    // el que escribió en el checkout.
     let payerEmail: string | null = null;
     if (userId) {
       const u = await prisma.user.findUnique({ where: { id: parseInt(String(userId)) } });
       payerEmail = u?.email ?? null;
+    }
+    if (!payerEmail) {
+      const guestEmail = String(payer?.email ?? '').trim().toLowerCase().slice(0, 100);
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) payerEmail = guestEmail;
     }
 
     // Delivery: validar y recalcular el cargo en el servidor
@@ -122,6 +127,7 @@ router.post('/create', async (req: Request, res: Response) => {
       n: String(name).slice(0, 200),
       u: userId ? parseInt(String(userId)) : null,
       ph: payerPhone || null,
+      e: payerEmail,
       i: order.map((l) => [l.id, Math.max(1, parseInt(String(l.quantity)) || 1)]),
       d: isDelivery
         ? {
@@ -266,6 +272,7 @@ async function verifyAndRegister(paymentId: string) {
     n: string;
     u: number | null;
     ph?: string | null;
+    e?: string | null;
     i: [number, number][];
     d: { t: string; a?: string; p?: string; la?: number; ln?: number; k?: number; f?: number };
   };
@@ -303,7 +310,7 @@ async function verifyAndRegister(paymentId: string) {
       // Avisar al cliente por WhatsApp y correo (solo la primera vez que se
       // registra la orden; nunca lanza)
       const phone = p.ph ?? p.d?.p ?? null;
-      let email = payment.payer?.email ?? null;
+      let email = payment.payer?.email ?? p.e ?? null;
       if (p.u) {
         const u = await prisma.user.findUnique({ where: { id: p.u } });
         email = u?.email ?? email;

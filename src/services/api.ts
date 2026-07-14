@@ -221,7 +221,7 @@ export async function createPaymentPreference(payload: {
   order: { id: number; quantity: number }[];
   delivery: DeliveryInfo;
   // Datos opcionales del comprador (mejoran la aprobación en Mercado Pago)
-  payer?: { phone?: string; dni?: string };
+  payer?: { phone?: string; dni?: string; email?: string };
 }): Promise<{ initPoint: string | null; error: string | null }> {
   try {
     const data = await request<{ initPoint: string }>('/payments/create', {
