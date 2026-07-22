@@ -40,6 +40,8 @@ model Product {
 
 model Order {
   id           Int            @id @default(autoincrement())
+  // Código público único del pedido (ej. "FC-8K3N2A"), visible para el cliente
+  code         String?        @unique @db.VarChar(20)
   name         String         @db.VarChar(200)
   total        Decimal        @db.Decimal(10, 2)
   status       Boolean        @default(false)
@@ -48,10 +50,13 @@ model Order {
   finalizedAt  DateTime?
   // Cliente que hizo el pedido (null en órdenes antiguas / anónimas)
   userId       Int?
+  user         User?          @relation(fields: [userId], references: [id])
   // ─── Entrega ───
   // "PICKUP" (recojo en local) o "DELIVERY" (envío a domicilio)
   deliveryType    String   @default("PICKUP") @db.VarChar(10)
   deliveryAddress String?  @db.VarChar(300)
+  // Teléfono de contacto para que el repartidor llame al llegar
+  deliveryPhone   String?  @db.VarChar(20)
   deliveryLat     Float?
   deliveryLng     Float?
   // Distancia estimada desde el local (km) y cargo por delivery (S/)
@@ -63,8 +68,36 @@ model Order {
   paymentStatus   String?  @db.VarChar(20)
   createdAt    DateTime       @default(now())
   orderItems   OrderProduct[]
+  payments     Payment[]
 
   @@map("orders")
+}
+
+// Registro de pagos de Mercado Pago: guarda TODOS los intentos (aprobados,
+// rechazados, pendientes). La orden solo se crea con pagos aprobados, por eso
+// orderId es opcional.
+model Payment {
+  id                Int      @id @default(autoincrement())
+  // Id del pago en Mercado Pago
+  mpPaymentId       String   @unique @db.VarChar(60)
+  status            String   @db.VarChar(30) // approved | rejected | pending | in_process...
+  statusDetail      String?  @db.VarChar(80) // accredited, cc_rejected_bad_filled_card...
+  amount            Decimal  @db.Decimal(10, 2)
+  currency          String   @default("PEN") @db.VarChar(5)
+  method            String?  @db.VarChar(40) // visa, master, yape...
+  methodType        String?  @db.VarChar(40) // credit_card, debit_card...
+  installments      Int?
+  payerEmail        String?  @db.VarChar(150)
+  // Comisión de MP y neto recibido (solo en pagos aprobados)
+  feeAmount         Decimal? @db.Decimal(10, 2)
+  netAmount         Decimal? @db.Decimal(10, 2)
+  externalReference String?  @db.VarChar(60)
+  orderId           Int?
+  order             Order?   @relation(fields: [orderId], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("payments")
 }
 
 model OrderProduct {
@@ -87,6 +120,7 @@ model User {
   // "CLIENT" (por defecto) o "ADMIN". Solo el admin ve el panel de administración.
   role      String   @default("CLIENT") @db.VarChar(20)
   createdAt DateTime @default(now())
+  orders    Order[]
 
   @@map("users")
 }

@@ -12,6 +12,12 @@ import paymentsRouter from './routes/payments';
 import settingsRouter from './routes/settings';
 
 const app = express();
+
+// Detrás del proxy de Vercel: sin esto req.protocol sería "http" y la URL del
+// webhook que le damos a Mercado Pago apuntaría a http:// (MP no sigue el
+// redirect a https y la notificación se pierde).
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 3001;
 const uploadsDir = process.env.UPLOADS_DIR || 'uploads';
 

@@ -38,9 +38,16 @@ export default function KioskMenu() {
   const [deliveryMode, setDeliveryMode] = useState<'PICKUP' | 'DELIVERY'>('PICKUP');
   const [deliverySel, setDeliverySel] = useState<DeliverySelection | null>(null);
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryPhone, setDeliveryPhone] = useState('');
   const [feeAccepted, setFeeAccepted] = useState(false);
+  // DNI opcional del comprador: mejora la tasa de aprobación en Mercado Pago
+  const [payerDni, setPayerDni] = useState('');
+  // Correo del comprador: MP lo exige en la preferencia para bajar el score de
+  // riesgo (cc_rejected_high_risk). Los usuarios logueados usan el de su cuenta.
+  const [payerEmail, setPayerEmail] = useState('');
   // ─── Pago (Mercado Pago) ───
   const [paidTotal, setPaidTotal] = useState<number | null>(null); // total del pedido ya pagado
+  const [paidCode, setPaidCode] = useState<string | null>(null);   // código único del pedido pagado
   const [confirmingPay, setConfirmingPay] = useState(false);       // verificando pago al volver de MP
 
   useEffect(() => {
@@ -76,6 +83,9 @@ export default function KioskMenu() {
         setDeliveryMode(saved.deliveryMode ?? 'PICKUP');
         setDeliverySel(saved.deliverySel ?? null);
         setDeliveryAddress(saved.deliveryAddress ?? '');
+        setDeliveryPhone(saved.deliveryPhone ?? '');
+        setPayerDni(saved.payerDni ?? '');
+        setPayerEmail(saved.payerEmail ?? '');
         setFeeAccepted(false);
       } catch { /* carrito no recuperable */ }
     };
@@ -90,6 +100,7 @@ export default function KioskMenu() {
           localStorage.removeItem('fc_pending_checkout');
           setClientName(order.name);
           setPaidTotal(Number(order.total));
+          setPaidCode(order.code ?? null);
           setConfirmed(true);
         } else {
           restoreCheckout();
@@ -97,7 +108,10 @@ export default function KioskMenu() {
         }
       });
     } else {
-      // failure o pending: restauramos el carrito para que pueda reintentar
+      // failure o pending: registramos el intento en el backend (queda en la
+      // tabla payments con su motivo) y restauramos el carrito para reintentar
+      const paymentId = params.get('payment_id') || params.get('collection_id');
+      if (paymentId && paymentId !== 'null') void confirmPayment(paymentId);
       restoreCheckout();
       setError(
         mp === 'pending'
@@ -138,9 +152,10 @@ export default function KioskMenu() {
   const shipping = isDelivery && deliverySel ? deliverySel.fee : 0;
   const total = subtotal + shipping;
 
-  // Para confirmar un delivery hace falta: ubicación en el mapa, dirección y aceptar el cargo
+  // Para confirmar un delivery hace falta: ubicación, dirección, teléfono y aceptar el cargo
+  const phoneValid = deliveryPhone.replace(/\D/g, '').length >= 7;
   const deliveryIncomplete =
-    isDelivery && (!deliverySel || !deliveryAddress.trim() || !feeAccepted);
+    isDelivery && (!deliverySel || !deliveryAddress.trim() || !phoneValid || !feeAccepted);
 
   async function handleConfirm(e: React.FormEvent) {
     e.preventDefault();
@@ -152,6 +167,7 @@ export default function KioskMenu() {
       ? {
           type: 'DELIVERY' as const,
           address: deliveryAddress.trim(),
+          phone: deliveryPhone.trim(),
           lat: deliverySel.lat,
           lng: deliverySel.lng,
           distanceKm: deliverySel.distanceKm,
@@ -162,7 +178,7 @@ export default function KioskMenu() {
     // Guardamos el checkout por si el pago falla y hay que reintentarlo
     localStorage.setItem(
       'fc_pending_checkout',
-      JSON.stringify({ cart, clientName, deliveryMode, deliverySel, deliveryAddress })
+      JSON.stringify({ cart, clientName, deliveryMode, deliverySel, deliveryAddress, deliveryPhone, payerDni, payerEmail })
     );
 
     // Creamos la preferencia de pago y redirigimos a Mercado Pago.
@@ -172,6 +188,11 @@ export default function KioskMenu() {
       userId: user?.id,
       order: cart.map((i) => ({ id: i.id, quantity: i.quantity })),
       delivery,
+      payer: {
+        phone: deliveryPhone.trim(),
+        dni: payerDni.trim(),
+        email: (user?.email ?? payerEmail).trim(),
+      },
     });
 
     if (err || !initPoint) {
@@ -210,11 +231,21 @@ export default function KioskMenu() {
             Gracias <strong className="text-gray-900">{clientName}</strong>, tu pago fue aprobado y
             tu pedido está siendo preparado.
           </p>
+          {paidCode && (
+            <div className="bg-brand-light border border-brand/30 rounded-xl px-6 py-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                Código de tu pedido
+              </p>
+              <p className="font-mono text-2xl font-extrabold text-gray-900 tracking-wider">
+                {paidCode}
+              </p>
+            </div>
+          )}
           <p className="font-serif text-3xl font-extrabold text-brand">
             {formatCurrency(paidTotal ?? total)}
           </p>
           <button
-            onClick={() => { setCart([]); setClientName(''); setConfirmed(false); setPaidTotal(null); }}
+            onClick={() => { setCart([]); setClientName(''); setConfirmed(false); setPaidTotal(null); setPaidCode(null); }}
             className="mt-2 bg-gray-900 hover:bg-black text-white font-bold px-9 py-3 rounded-lg transition-colors"
           >
             Nuevo Pedido
@@ -436,6 +467,19 @@ export default function KioskMenu() {
                       className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
                     />
 
+                    <input
+                      type="tel"
+                      value={deliveryPhone}
+                      onChange={(e) => setDeliveryPhone(e.target.value)}
+                      placeholder="Teléfono de contacto (ej. 987654321)"
+                      maxLength={20}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                    />
+                    <p className="text-[11px] text-gray-400 -mt-1.5">
+                      El repartidor te llamará a este número cuando llegue y te
+                      confirmaremos tu pedido por WhatsApp.
+                    </p>
+
                     {/* Aviso del cargo por delivery + confirmación */}
                     {deliverySel && (
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-2.5">
@@ -486,14 +530,46 @@ export default function KioskMenu() {
 
             <form onSubmit={handleConfirm} className="space-y-3">
               {cart.length > 0 && (
-                <input
-                  type="text"
-                  placeholder="Tu nombre"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  required
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
-                />
+                <>
+                  <input
+                    type="text"
+                    placeholder="Tu nombre y apellido"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    required
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                  />
+                  {!isDelivery && (
+                    <input
+                      type="tel"
+                      placeholder="Celular (opcional, te confirmamos por WhatsApp)"
+                      value={deliveryPhone}
+                      onChange={(e) => setDeliveryPhone(e.target.value)}
+                      maxLength={20}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                    />
+                  )}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="DNI (opcional, agiliza la aprobación del pago)"
+                    value={payerDni}
+                    onChange={(e) => setPayerDni(e.target.value.replace(/\D/g, ''))}
+                    maxLength={8}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                  />
+                  {!user && (
+                    <input
+                      type="email"
+                      placeholder="Tu correo (te confirmamos el pedido)"
+                      value={payerEmail}
+                      onChange={(e) => setPayerEmail(e.target.value)}
+                      required
+                      maxLength={100}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand"
+                    />
+                  )}
+                </>
               )}
               <button
                 type="submit"
@@ -505,8 +581,8 @@ export default function KioskMenu() {
               </button>
               {deliveryIncomplete && cart.length > 0 && (
                 <p className="text-[11px] text-gray-400 text-center">
-                  Para confirmar: marca tu ubicación en el mapa, escribe tu dirección y acepta el
-                  cargo de delivery.
+                  Para confirmar: marca tu ubicación (o usa tu ubicación actual), escribe tu
+                  dirección y teléfono, y acepta el cargo de delivery.
                 </p>
               )}
             </form>

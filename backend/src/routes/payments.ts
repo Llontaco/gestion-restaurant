@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../prismaClient';
+import { notifyOrderConfirmed } from '../notifications';
 
 const router = Router();
 
@@ -32,11 +33,14 @@ router.post('/create', async (req: Request, res: Response) => {
     const token = process.env.MP_ACCESS_TOKEN;
     if (!token) return res.status(500).json({ error: 'Pagos no configurados (falta MP_ACCESS_TOKEN)' });
 
-    const { name, userId, order, delivery } = req.body as {
+    const { name, userId, order, delivery, payer } = req.body as {
       name?: string;
       userId?: number;
       order?: CartLine[];
-      delivery?: { type: string; address?: string; lat?: number; lng?: number };
+      delivery?: { type: string; address?: string; lat?: number; lng?: number; phone?: string };
+      // Datos opcionales del comprador: mejoran la calidad de la integración
+      // y la tasa de aprobación de MP
+      payer?: { phone?: string; dni?: string; email?: string };
     };
 
     if (!name || !order || !Array.isArray(order) || order.length === 0) {
@@ -45,7 +49,10 @@ router.post('/create', async (req: Request, res: Response) => {
 
     // Precios reales desde la BD
     const ids = order.map((l) => parseInt(String(l.id)));
-    const products = await prisma.product.findMany({ where: { id: { in: ids } } });
+    const products = await prisma.product.findMany({
+      where: { id: { in: ids } },
+      include: { category: true },
+    });
     if (products.length !== ids.length) {
       return res.status(400).json({ error: 'Hay productos inválidos en el carrito' });
     }
@@ -56,19 +63,41 @@ router.post('/create', async (req: Request, res: Response) => {
       return {
         id: String(p.id),
         title: p.name,
+        description: `${p.category.name} — Fresh Coffee`,
+        category_id: 'food',
         quantity: qty,
         unit_price: Number(p.price),
         currency_id: 'PEN',
       };
     });
 
+    // Email del comprador: enviarlo SIEMPRE en la preferencia baja el score de
+    // riesgo de MP (cc_rejected_high_risk). Logueado: el de su cuenta; invitado:
+    // el que escribió en el checkout.
+    let payerEmail: string | null = null;
+    if (userId) {
+      const u = await prisma.user.findUnique({ where: { id: parseInt(String(userId)) } });
+      payerEmail = u?.email ?? null;
+    }
+    if (!payerEmail) {
+      const guestEmail = String(payer?.email ?? '').trim().toLowerCase().slice(0, 100);
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) payerEmail = guestEmail;
+    }
+
     // Delivery: validar y recalcular el cargo en el servidor
     const isDelivery = delivery?.type === 'DELIVERY';
     let distanceKm = 0;
     let deliveryFee = 0;
+    let deliveryPhone = '';
     if (isDelivery) {
       if (!delivery?.address || delivery.lat == null || delivery.lng == null) {
         return res.status(400).json({ error: 'El delivery requiere dirección y ubicación' });
+      }
+      // Teléfono de contacto para el repartidor (7 a 15 dígitos)
+      deliveryPhone = String(delivery.phone ?? '').trim().slice(0, 20);
+      const phoneDigits = deliveryPhone.replace(/\D/g, '');
+      if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+        return res.status(400).json({ error: 'El delivery requiere un teléfono de contacto válido' });
       }
       const straight = haversineKm(STORE_LOCATION, { lat: Number(delivery.lat), lng: Number(delivery.lng) });
       distanceKm = Math.round(straight * ROAD_FACTOR * 10) / 10;
@@ -80,6 +109,8 @@ router.post('/create', async (req: Request, res: Response) => {
         items.push({
           id: 'delivery',
           title: `Delivery (${distanceKm} km)`,
+          description: 'Envío a domicilio — Fresh Coffee',
+          category_id: 'services',
           quantity: 1,
           unit_price: deliveryFee,
           currency_id: 'PEN',
@@ -87,21 +118,44 @@ router.post('/create', async (req: Request, res: Response) => {
       }
     }
 
+    // Teléfono: el que escriba en el checkout o, en delivery, el del repartidor
+    const payerPhone = String(payer?.phone ?? '').replace(/\D/g, '') ||
+                       deliveryPhone.replace(/\D/g, '');
+
     // Payload compacto del pedido; viaja en metadata y se usa al aprobar el pago
     const orderPayload = {
       n: String(name).slice(0, 200),
       u: userId ? parseInt(String(userId)) : null,
+      ph: payerPhone || null,
+      e: payerEmail,
       i: order.map((l) => [l.id, Math.max(1, parseInt(String(l.quantity)) || 1)]),
       d: isDelivery
         ? {
             t: 'DELIVERY',
             a: String(delivery!.address).slice(0, 300),
+            p: deliveryPhone,
             la: Number(delivery!.lat),
             ln: Number(delivery!.lng),
             k: distanceKm,
             f: deliveryFee,
           }
         : { t: 'PICKUP' },
+    };
+
+    // ─── Datos del comprador para MP (suben la tasa de aprobación) ───
+    // Nombre y apellido a partir del campo único "Tu nombre"
+    const nameParts = String(name).trim().split(/\s+/);
+    const firstName = nameParts[0];
+    const surname = nameParts.slice(1).join(' ');
+    // DNI peruano: exactamente 8 dígitos; si no, no se envía
+    const payerDni = String(payer?.dni ?? '').replace(/\D/g, '');
+
+    const mpPayer = {
+      name: firstName,
+      ...(surname ? { surname } : {}),
+      ...(payerEmail ? { email: payerEmail } : {}),
+      ...(payerPhone.length >= 7 ? { phone: { number: payerPhone } } : {}),
+      ...(payerDni.length === 8 ? { identification: { type: 'DNI', number: payerDni } } : {}),
     };
 
     // URL del frontend para volver tras el pago
@@ -116,7 +170,7 @@ router.post('/create', async (req: Request, res: Response) => {
       },
       body: JSON.stringify({
         items,
-        payer: { name: String(name) },
+        payer: mpPayer,
         metadata: { order_json: JSON.stringify(orderPayload) },
         external_reference: `fc-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
         back_urls: {
@@ -144,6 +198,15 @@ router.post('/create', async (req: Request, res: Response) => {
   }
 });
 
+// ─── Código público del pedido (ej. "FC-8K3N2A") ────────────────────────────
+// Sin 0/O ni 1/I para que sea fácil de leer y dictar por teléfono.
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function genOrderCode(): string {
+  let s = '';
+  for (let i = 0; i < 6; i++) s += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+  return `FC-${s}`;
+}
+
 // ─── Núcleo: verificar un pago con MP y registrar la orden (idempotente) ────
 async function verifyAndRegister(paymentId: string) {
   const token = process.env.MP_ACCESS_TOKEN;
@@ -163,9 +226,40 @@ async function verifyAndRegister(paymentId: string) {
 
   const payment = (await payRes.json()) as {
     status: string;
+    status_detail?: string;
     transaction_amount: number;
+    currency_id?: string;
+    payment_method_id?: string;
+    payment_type_id?: string;
+    installments?: number;
+    external_reference?: string;
+    payer?: { email?: string | null };
+    transaction_details?: { net_received_amount?: number };
+    fee_details?: { amount?: number }[];
     metadata?: { order_json?: string };
   };
+
+  // Registrar el pago en la tabla payments, sea cual sea su estado.
+  // Upsert: el webhook puede avisar varias veces (pending → approved).
+  const feeAmount = (payment.fee_details ?? []).reduce((s, f) => s + (Number(f.amount) || 0), 0);
+  const paymentData = {
+    status: payment.status,
+    statusDetail: payment.status_detail ?? null,
+    amount: payment.transaction_amount,
+    currency: payment.currency_id ?? 'PEN',
+    method: payment.payment_method_id ?? null,
+    methodType: payment.payment_type_id ?? null,
+    installments: payment.installments ?? null,
+    payerEmail: payment.payer?.email ?? null,
+    feeAmount: feeAmount || null,
+    netAmount: payment.transaction_details?.net_received_amount ?? null,
+    externalReference: payment.external_reference ?? null,
+  };
+  const payRecord = await prisma.payment.upsert({
+    where: { mpPaymentId: String(paymentId) },
+    update: paymentData,
+    create: { mpPaymentId: String(paymentId), ...paymentData },
+  });
 
   if (payment.status !== 'approved') {
     return { error: null, order: null, status: payment.status };
@@ -177,32 +271,69 @@ async function verifyAndRegister(paymentId: string) {
   const p = JSON.parse(raw) as {
     n: string;
     u: number | null;
+    ph?: string | null;
+    e?: string | null;
     i: [number, number][];
-    d: { t: string; a?: string; la?: number; ln?: number; k?: number; f?: number };
+    d: { t: string; a?: string; p?: string; la?: number; ln?: number; k?: number; f?: number };
   };
 
   const isDelivery = p.d?.t === 'DELIVERY';
-  const order = await prisma.order.create({
-    data: {
-      name: p.n,
-      total: payment.transaction_amount,
-      userId: p.u ?? null,
-      deliveryType: isDelivery ? 'DELIVERY' : 'PICKUP',
-      deliveryAddress: isDelivery ? p.d.a ?? null : null,
-      deliveryLat: isDelivery ? p.d.la ?? null : null,
-      deliveryLng: isDelivery ? p.d.ln ?? null : null,
-      distanceKm: isDelivery ? p.d.k ?? null : null,
-      deliveryFee: isDelivery ? p.d.f ?? 0 : 0,
-      paymentId: String(paymentId),
-      paymentStatus: 'approved',
-      orderItems: {
-        create: p.i.map(([productId, quantity]) => ({ productId, quantity })),
-      },
+  const data = {
+    name: p.n,
+    total: payment.transaction_amount,
+    userId: p.u ?? null,
+    deliveryType: isDelivery ? 'DELIVERY' : 'PICKUP',
+    deliveryAddress: isDelivery ? p.d.a ?? null : null,
+    deliveryPhone: isDelivery ? p.d.p ?? null : null,
+    deliveryLat: isDelivery ? p.d.la ?? null : null,
+    deliveryLng: isDelivery ? p.d.ln ?? null : null,
+    distanceKm: isDelivery ? p.d.k ?? null : null,
+    deliveryFee: isDelivery ? p.d.f ?? 0 : 0,
+    paymentId: String(paymentId),
+    paymentStatus: 'approved',
+    orderItems: {
+      create: p.i.map(([productId, quantity]) => ({ productId, quantity })),
     },
-    include: { orderItems: { include: { product: true } } },
-  });
+  };
 
-  return { error: null, order, status: 'approved' };
+  // Reintenta si el código aleatorio choca con uno existente; si el conflicto
+  // es por paymentId, otro proceso (webhook/confirm) ya registró la orden.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const order = await prisma.order.create({
+        data: { ...data, code: genOrderCode() },
+        include: { orderItems: { include: { product: true } } },
+      });
+      // Vincular el registro del pago con la orden creada
+      await prisma.payment.update({ where: { id: payRecord.id }, data: { orderId: order.id } });
+
+      // Avisar al cliente por WhatsApp y correo (solo la primera vez que se
+      // registra la orden; nunca lanza)
+      const phone = p.ph ?? p.d?.p ?? null;
+      let email = payment.payer?.email ?? p.e ?? null;
+      if (p.u) {
+        const u = await prisma.user.findUnique({ where: { id: p.u } });
+        email = u?.email ?? email;
+      }
+      await notifyOrderConfirmed(order, phone, email);
+
+      return { error: null, order, status: 'approved' };
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        const dup = await prisma.order.findFirst({
+          where: { paymentId: String(paymentId) },
+          include: { orderItems: { include: { product: true } } },
+        });
+        if (dup) {
+          await prisma.payment.update({ where: { id: payRecord.id }, data: { orderId: dup.id } });
+          return { error: null, order: dup, status: 'approved' };
+        }
+        continue; // colisión de código: genera otro
+      }
+      throw e;
+    }
+  }
+  return { error: 'No se pudo registrar la orden', order: null, status: 'approved' };
 }
 
 // ─── POST /api/payments/confirm — el frontend confirma al volver de MP ───────

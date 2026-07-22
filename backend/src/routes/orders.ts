@@ -3,17 +3,18 @@ import prisma from '../prismaClient';
 
 const router = Router();
 
-// GET /api/orders/pending — órdenes pendientes (status = false)
+// GET /api/orders/pending — órdenes por preparar (solo con pago aprobado)
 router.get('/pending', async (_req: Request, res: Response) => {
   try {
     const orders = await prisma.order.findMany({
-      where: { status: false },
+      where: { status: false, paymentStatus: 'approved' },
       include: {
         orderItems: {
           include: { product: true },
         },
       },
-      orderBy: { createdAt: 'asc' },
+      // La orden más reciente primero
+      orderBy: { createdAt: 'desc' },
     });
     res.json(orders);
   } catch {
@@ -60,6 +61,30 @@ router.get('/mine', async (req: Request, res: Response) => {
     res.json(orders);
   } catch {
     res.status(500).json({ error: 'Error al obtener tus pedidos' });
+  }
+});
+
+// GET /api/orders/report?date=YYYY-MM-DD — ventas del día (para exportar)
+router.get('/report', async (req: Request, res: Response) => {
+  try {
+    const date = String(req.query.date ?? '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'date es requerido con formato YYYY-MM-DD' });
+    }
+
+    // Día completo en hora de Perú (UTC-5)
+    const start = new Date(`${date}T00:00:00-05:00`);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+
+    const orders = await prisma.order.findMany({
+      where: { createdAt: { gte: start, lt: end } },
+      include: { orderItems: { include: { product: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    res.json(orders);
+  } catch {
+    res.status(500).json({ error: 'Error al generar el reporte' });
   }
 });
 

@@ -32,6 +32,7 @@ export type OrderProductItem = {
 export type DeliveryInfo = {
   type: 'PICKUP' | 'DELIVERY';
   address?: string;
+  phone?: string;
   lat?: number;
   lng?: number;
   distanceKm?: number;
@@ -40,6 +41,8 @@ export type DeliveryInfo = {
 
 export type Order = {
   id: number;
+  // Código público único del pedido (ej. "FC-8K3N2A")
+  code: string | null;
   name: string;
   total: number;
   status: boolean;
@@ -48,6 +51,7 @@ export type Order = {
   userId: number | null;
   deliveryType: 'PICKUP' | 'DELIVERY';
   deliveryAddress: string | null;
+  deliveryPhone: string | null;
   deliveryLat: number | null;
   deliveryLng: number | null;
   distanceKm: number | null;
@@ -178,6 +182,18 @@ export async function deleteProduct(
   }
 }
 
+// ─── getSalesReport ───────────────────────────────────────────────────────────
+export async function getSalesReport(
+  date: string
+): Promise<{ orders: Order[]; error: string | null }> {
+  try {
+    const orders = await request<Order[]>(`/orders/report?date=${date}`);
+    return { orders, error: null };
+  } catch (e) {
+    return { orders: [], error: (e as Error).message };
+  }
+}
+
 // ─── createOrder ──────────────────────────────────────────────────────────────
 export async function createOrder(
   name: string,
@@ -204,6 +220,8 @@ export async function createPaymentPreference(payload: {
   userId?: number;
   order: { id: number; quantity: number }[];
   delivery: DeliveryInfo;
+  // Datos opcionales del comprador (mejoran la aprobación en Mercado Pago)
+  payer?: { phone?: string; dni?: string; email?: string };
 }): Promise<{ initPoint: string | null; error: string | null }> {
   try {
     const data = await request<{ initPoint: string }>('/payments/create', {

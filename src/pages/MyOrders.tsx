@@ -64,7 +64,7 @@ export default function MyOrders() {
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <div>
                       <p className="font-serif text-lg font-bold text-gray-900">
-                        Pedido #{order.id}
+                        Pedido {order.code ?? `#${order.id}`}
                       </p>
                       <p className="text-xs text-gray-400">
                         {new Date(order.createdAt).toLocaleString('es-PE', {

@@ -61,6 +61,11 @@ export default function DeliveryMapPicker({ onSelect }: Props) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [selection, setSelection] = useState<DeliverySelection | null>(null);
   const [tooFar, setTooFar] = useState(false);
+  // ─── Geolocalización ("Usar mi ubicación actual") ───
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  // La asigna el efecto cuando el mapa está listo: coloca el marcador y calcula
+  const placeMarkerRef = useRef<((pos: { lat: number; lng: number }) => void) | null>(null);
   // Referencia estable al callback para no re-crear el mapa en cada render
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -90,10 +95,9 @@ export default function DeliveryMapPicker({ onSelect }: Props) {
           label: { text: '🏪', fontSize: '18px' },
         });
 
-        // Al tocar el mapa: colocar/mover el marcador del cliente y calcular
-        map.addListener('click', (e: any) => {
-          const pos = { lat: e.latLng.lat(), lng: e.latLng.lng() };
-
+        // Coloca/mueve el marcador del cliente y calcula la tarifa.
+        // Lo usan tanto el click en el mapa como el botón de ubicación actual.
+        function placeMarker(pos: { lat: number; lng: number }) {
           if (!markerRef.current) {
             markerRef.current = new g.maps.Marker({
               position: pos,
@@ -108,6 +112,16 @@ export default function DeliveryMapPicker({ onSelect }: Props) {
             markerRef.current.setPosition(pos);
           }
           compute(pos);
+        }
+        placeMarkerRef.current = (pos) => {
+          placeMarker(pos);
+          map.panTo(pos);
+          if ((map.getZoom() ?? 13) < 15) map.setZoom(15);
+        };
+
+        // Al tocar el mapa: colocar/mover el marcador del cliente y calcular
+        map.addListener('click', (e: any) => {
+          placeMarker({ lat: e.latLng.lat(), lng: e.latLng.lng() });
         });
 
         function compute(pos: { lat: number; lng: number }) {
@@ -133,10 +147,57 @@ export default function DeliveryMapPicker({ onSelect }: Props) {
     return () => { cancelled = true; };
   }, []);
 
+  // Pide la ubicación al navegador y la usa como punto de entrega
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      setGeoError('Tu navegador no soporta geolocalización. Marca el punto en el mapa.');
+      return;
+    }
+    setGeoError(null);
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        placeMarkerRef.current?.({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        setLocating(false);
+        setGeoError(
+          err.code === err.PERMISSION_DENIED
+            ? 'No diste permiso de ubicación. Actívalo en tu navegador o marca el punto en el mapa.'
+            : 'No pudimos obtener tu ubicación. Marca el punto en el mapa.'
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  }
+
   return (
     <div className="space-y-2">
+      <button
+        type="button"
+        onClick={useMyLocation}
+        disabled={status !== 'ready' || locating}
+        className="w-full flex items-center justify-center gap-2 border-2 border-brand text-brand hover:bg-brand-light disabled:opacity-50 font-bold text-sm py-2.5 rounded-lg transition-colors"
+      >
+        {locating ? (
+          <>
+            <span className="w-4 h-4 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+            Obteniendo tu ubicación...
+          </>
+        ) : (
+          <>📍 Usar mi ubicación actual</>
+        )}
+      </button>
+
+      {geoError && (
+        <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+          {geoError}
+        </p>
+      )}
+
       <p className="text-xs text-gray-500">
-        Toca el mapa para marcar dónde entregaremos tu pedido. Puedes arrastrar el marcador.
+        O toca el mapa para marcar dónde entregaremos tu pedido. Puedes arrastrar el marcador.
       </p>
 
       {/* El div del mapa es EXCLUSIVO de Google Maps (React no debe renderizar

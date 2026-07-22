@@ -93,6 +93,20 @@ pago con MP** → se crea la orden → pantalla **"¡Pedido Realizado!"**.
 - Variable: `MP_ACCESS_TOKEN` (backend, secreto).
 - \*Yape aparece según reglas dinámicas de MP (sesión invitado, montos, disponibilidad); no se excluye ningún método.
 
+## 10. Reportes exportables — Ventas del día en Excel y PDF (08/07/2026)
+
+Botones **📊 Excel** y **📄 PDF** en "Administrar órdenes" con selector de fecha:
+exportan las ventas del día con detalle de productos, canal, pago y totales.
+
+| Componente | Archivo |
+|---|---|
+| Endpoint `GET /api/orders/report?date=YYYY-MM-DD` (día completo en hora de Perú) | `backend/src/routes/orders.ts` |
+| Componente de exportación (exceljs / jspdf, carga diferida) | `src/components/SalesReportExport.tsx` |
+| Función `getSalesReport` | `src/services/api.ts` |
+
+- Documentación detallada con explicación del código: `docs/Reporte_Ventas_Exportable.md`.
+- Fix colateral: `GoogleSignInButton.tsx` movido a `src/components/` (el build estaba roto).
+
 ---
 
 ## Cambios de base de datos (PostgreSQL / Neon)
