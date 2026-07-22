@@ -1,34 +1,145 @@
 @import "tailwindcss";
 
-/* ─── Design tokens (Fresh Coffee) ─────────────────────────────────────────── */
+/* ─── Design tokens ─────────────────────────────────────────────────────────────
+   Tailwind v4 compila cada `--color-*` de @theme en utilidades (bg-primary,
+   text-card, border-border, …). El ThemeProvider sobreescribe estas variables en
+   <html> en tiempo de ejecución, así que TODA la app se re-tematiza en vivo.
+   Los valores aquí son solo el fallback inicial (marca "Fresh Coffee"). */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
   --font-script: "Pacifico", ui-serif, cursive;
 
-  /* Dorado de marca */
+  /* Marca (semánticos) */
+  --color-primary: #d4a017;
+  --color-primary-hover: #b3870f;
+  --color-primary-contrast: #ffffff;
+  --color-primary-soft: #fbf3df;
+
+  --color-secondary: #1f2937;
+  --color-secondary-contrast: #ffffff;
+
+  --color-accent: #0ea5e9;
+  --color-accent-contrast: #ffffff;
+
+  /* Estado */
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+  --color-danger-soft: #fdecec;
+
+  /* Superficies */
+  --color-bg: #f7f5f1;
+  --color-surface: #f7f5f1;
+  --color-card: #ffffff;
+  --color-card-muted: #f3f2ee;
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e7eb;
+
+  /* Compatibilidad con utilidades `brand` heredadas (= primary) */
   --color-brand: #d4a017;
   --color-brand-dark: #b3870f;
   --color-brand-light: #fbf3df;
+}
 
-  /* Superficie cálida del sistema */
-  --color-surface: #f7f5f1;
+/* Escalado de fuente configurable (sm/md/lg) preservando el boost de escritorio. */
+html {
+  font-size: calc(100% * var(--app-font-scale, 1));
+}
+@media (min-width: 1024px) {
+  html {
+    font-size: calc(125% * var(--app-font-scale, 1));
+  }
 }
 
 body {
-  background-color: var(--color-surface);
-  color: #1f2937;
+  background-color: var(--color-bg);
+  color: var(--color-text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Al 100% de escalado la UI se veía muy pequeña (estaba pensada para 125%).
-   Escalamos vía font-size raíz (todo el diseño usa rem): agranda texto,
-   espaciados y componentes 25% pero respeta el alto/ancho real del viewport
-   (100vh sigue siendo la pantalla completa → sin scroll extra y el navbar
-   se estira a todo el ancho). Solo escritorio. */
-@media (min-width: 1024px) {
-  html {
-    font-size: 125%;
+/* Transición suave al cambiar tema (útil para la vista previa en vivo). */
+.theme-transition,
+.theme-transition * {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease;
+}
+
+/* ─── Clases de componente reutilizables (sin colores hardcodeados) ───────────── */
+@layer components {
+  .ui-card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 1rem;
+    color: var(--color-text);
   }
+
+  .ui-panel {
+    background-color: var(--color-card-muted);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+  }
+
+  .ui-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.4rem;
+  }
+
+  .ui-input {
+    width: 100%;
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    color: var(--color-text);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .ui-input::placeholder { color: var(--color-text-muted); }
+  .ui-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+  }
+
+  .ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    border-radius: 0.5rem;
+    padding: 0.65rem 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.05s ease;
+    border: 1px solid transparent;
+  }
+  .ui-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .ui-btn:active:not(:disabled) { transform: translateY(1px); }
+
+  .ui-btn-primary { background-color: var(--color-primary); color: var(--color-primary-contrast); }
+  .ui-btn-primary:hover:not(:disabled) { background-color: var(--color-primary-hover); }
+
+  .ui-btn-secondary { background-color: var(--color-secondary); color: var(--color-secondary-contrast); }
+  .ui-btn-secondary:hover:not(:disabled) { opacity: 0.9; }
+
+  .ui-btn-danger { background-color: var(--color-danger); color: #ffffff; }
+  .ui-btn-danger:hover:not(:disabled) { background-color: var(--color-danger-hover); }
+
+  .ui-btn-ghost {
+    background-color: transparent;
+    color: var(--color-text);
+    border-color: var(--color-border);
+  }
+  .ui-btn-ghost:hover:not(:disabled) { background-color: var(--color-card-muted); }
+
+  /* Badges de estado */
+  .ui-badge-success { background-color: color-mix(in srgb, var(--color-success) 16%, transparent); color: var(--color-success); }
+  .ui-badge-warning { background-color: color-mix(in srgb, var(--color-warning) 18%, transparent); color: var(--color-warning); }
+  .ui-badge-danger  { background-color: var(--color-danger-soft); color: var(--color-danger); }
 }

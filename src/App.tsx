@@ -11,6 +11,7 @@ import AdminProducts from './pages/AdminProducts'
 import AdminNewProduct from './pages/AdminNewProduct'
 import AdminEditProduct from './pages/AdminEditProduct'
 import AdminCategories from './pages/AdminCategories'
+import AdminSettings from './pages/AdminSettings'
 import MyOrders from './pages/MyOrders'
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/vistas/admin/products/new" element={<AdminNewProduct />} />
           <Route path="/vistas/admin/products/:id/edit" element={<AdminEditProduct />} />
           <Route path="/vistas/admin/categories" element={<AdminCategories />} />
+          <Route path="/vistas/admin/settings" element={<AdminSettings />} />
         </Route>
       </Route>
 

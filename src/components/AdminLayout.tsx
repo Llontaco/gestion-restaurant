@@ -12,14 +12,14 @@ type Props = {
 // barra superior + pestañas + contenedor con título.
 export default function AdminLayout({ title, action, children }: Props) {
   return (
-    <div className="min-h-screen flex flex-col bg-surface">
+    <div className="min-h-screen flex flex-col bg-bg">
       <Navbar />
       <AdminTabs />
       <main className="flex-1 w-full max-w-screen-2xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
           <div>
-            <h1 className="font-serif text-3xl font-bold text-gray-900">{title}</h1>
-            <div className="w-14 h-1 bg-brand rounded-full mt-2" />
+            <h1 className="font-serif text-3xl font-bold text-text">{title}</h1>
+            <div className="w-14 h-1 bg-primary rounded-full mt-2" />
           </div>
           {action}
         </div>

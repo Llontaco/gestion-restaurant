@@ -9,6 +9,7 @@ import ordersRouter from './routes/orders';
 import authRouter from './routes/auth';
 import chatRouter from './routes/chat';
 import paymentsRouter from './routes/payments';
+import settingsRouter from './routes/settings';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -52,6 +53,7 @@ app.use('/api/products', productsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/payments', paymentsRouter);
+app.use('/api/settings', settingsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -79,6 +81,9 @@ if (!process.env.VERCEL) {
   console.log(`  POST   /api/orders`);
   console.log(`  PUT    /api/orders/:id/complete`);
   console.log(`  POST   /api/chat`);
+  console.log(`  GET    /api/settings`);
+  console.log(`  PUT    /api/settings`);
+  console.log(`  POST   /api/settings/upload`);
   console.log(`  GET    /api/health\n`);
   });
 }

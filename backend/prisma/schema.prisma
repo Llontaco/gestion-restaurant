@@ -90,3 +90,55 @@ model User {
 
   @@map("users")
 }
+
+// ─── Personalización / Marca del restaurante ──────────────────────────────────
+// Configuración visual y empresarial editable desde "Configuración > Personalización".
+// `tenantKey` deja la puerta abierta a multiempresa: hoy existe un único registro
+// ("default"); mañana cada restaurante tendrá su propia fila con su propia key.
+model RestaurantSettings {
+  id        Int    @id @default(autoincrement())
+  tenantKey String @unique @default("default") @db.VarChar(60)
+
+  // ─── Marca ───
+  restaurantName    String  @default("Mi Restaurante") @db.VarChar(120)
+  appName           String  @default("Quiosco") @db.VarChar(60)
+  slogan            String? @db.VarChar(200)
+  // Text (no VarChar) porque las imágenes se guardan como data URL base64:
+  // funciona en Vercel serverless sin depender del sistema de archivos.
+  logoUrl           String? @db.Text
+  darkLogoUrl       String? @db.Text
+  faviconUrl        String? @db.Text
+  loginBackgroundUrl String? @db.Text
+
+  // ─── Colores (hex) ───
+  primaryColor    String @default("#d4a017") @db.VarChar(9)
+  secondaryColor  String @default("#1f2937") @db.VarChar(9)
+  accentColor     String @default("#0ea5e9") @db.VarChar(9)
+  successColor    String @default("#16a34a") @db.VarChar(9)
+  warningColor    String @default("#f59e0b") @db.VarChar(9)
+  dangerColor     String @default("#dc2626") @db.VarChar(9)
+  backgroundColor String @default("#f7f5f1") @db.VarChar(9)
+  textColor       String @default("#1f2937") @db.VarChar(9)
+
+  // ─── Apariencia ───
+  fontFamily String @default("Inter") @db.VarChar(80)
+  fontSize   String @default("md") @db.VarChar(10) // sm | md | lg
+  themeMode  String @default("light") @db.VarChar(10) // light | dark | auto
+
+  // ─── Empresa ───
+  ruc      String? @db.VarChar(20)
+  address  String? @db.VarChar(300)
+  phone    String? @db.VarChar(40)
+  email    String? @db.VarChar(150)
+  website  String? @db.VarChar(200)
+  currency String  @default("PEN") @db.VarChar(10)
+  timezone String  @default("America/Lima") @db.VarChar(60)
+
+  // Redes sociales como JSON: { facebook, instagram, tiktok, whatsapp, ... }
+  socialLinks Json? @db.JsonB
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("restaurant_settings")
+}

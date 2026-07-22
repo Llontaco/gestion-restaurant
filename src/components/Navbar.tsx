@@ -1,11 +1,14 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../theme/ThemeProvider';
 import { ClipboardIcon, StoreIcon, LogoutIcon, BasketIcon } from './icons';
 
 function tabClass(active: boolean) {
   return `flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors ${
-    active ? 'bg-brand text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+    active
+      ? 'bg-primary text-primary-contrast shadow-sm'
+      : 'text-text-muted hover:bg-card-muted'
   }`;
 }
 
@@ -13,6 +16,7 @@ export default function Navbar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
+  const { settings } = useTheme();
   const onAdminRoute = pathname.startsWith('/vistas/admin');
   const isKiosk = pathname.startsWith('/vistas/kiosk');
   const isMyOrders = pathname.startsWith('/vistas/my-orders');
@@ -23,7 +27,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+    <header className="bg-card border-b border-border sticky top-0 z-30">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4">
         {/* Marca (click → volver al quiosco) */}
         <Link
@@ -31,8 +35,10 @@ export default function Navbar() {
           className="flex items-center gap-4 hover:opacity-80 transition-opacity"
           title="Ir al quiosco"
         >
-          <BrandLogo />
-          <span className="hidden lg:block font-serif text-2xl font-bold text-gray-900">Quiosco</span>
+          <BrandLogo showText={false} />
+          <span className="hidden lg:block font-serif text-2xl font-bold text-text">
+            {settings.appName}
+          </span>
         </Link>
 
         {/* Navegación de módulos */}
@@ -56,12 +62,12 @@ export default function Navbar() {
         {/* Sesión */}
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="hidden sm:block text-right leading-tight">
-            <p className="text-xs text-gray-500">Sesión iniciada como</p>
-            <p className="font-bold text-gray-900">{user?.name}</p>
+            <p className="text-xs text-text-muted">Sesión iniciada como</p>
+            <p className="font-bold text-text">{user?.name}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold text-sm px-4 py-2.5 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-danger hover:bg-danger-hover text-white font-bold text-sm px-4 py-2.5 rounded-lg transition-colors"
           >
             <LogoutIcon className="w-4 h-4" />
             <span className="hidden sm:inline">Cerrar Sesión</span>

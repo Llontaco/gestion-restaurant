@@ -9,10 +9,10 @@ const NAV_LINKS = [
 
 export default function AdminSidebar() {
   return (
-    <aside className="md:w-72 md:h-screen bg-white border-r border-gray-200 flex-shrink-0">
+    <aside className="md:w-72 md:h-screen bg-card border-r border-border flex-shrink-0">
       <Logo />
       <div className="mt-10">
-        <p className="text-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+        <p className="text-center text-xs font-bold text-text-muted uppercase tracking-widest mb-3">
           Navegación
         </p>
         <nav className="flex flex-col">
@@ -23,7 +23,7 @@ export default function AdminSidebar() {
                 href={link.to}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-700 font-semibold text-base px-5 py-3 border-l-4 border-transparent hover:bg-amber-50 hover:border-amber-400 transition-all"
+                className="text-text font-semibold text-base px-5 py-3 border-l-4 border-transparent hover:bg-primary-soft hover:border-primary transition-all"
               >
                 {link.label}
               </a>
@@ -34,8 +34,8 @@ export default function AdminSidebar() {
                 className={({ isActive }) =>
                   `font-semibold text-base px-5 py-3 border-l-4 transition-all ${
                     isActive
-                      ? 'bg-amber-100 border-amber-400 text-amber-900'
-                      : 'border-transparent text-gray-700 hover:bg-amber-50 hover:border-amber-400'
+                      ? 'bg-primary-soft border-primary text-primary'
+                      : 'border-transparent text-text hover:bg-primary-soft hover:border-primary'
                   }`
                 }
               >
